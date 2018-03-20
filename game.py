@@ -1,78 +1,98 @@
 import pyglet
 
-
-class vec3:
-    def __init__(self, x: int=0, y: int=0, z: int=0):
-        self.x = x
-        self.y = y
-        self.z = z
-
-
-class Player:
-    def __init__(self):
-        self.position = vec3()
-        self.direction = vec3(1)
-
-    def update(self):
-        pass
-
-    def render(self):
-        pass
+from math_helper import vec3
+from graphics import rotate, translate, identity
+from camera import Camera
 
 
 class Cube:
-    def __init__(self):
+    def __init__(self, size: int = 10):
         self.position = vec3()
-        self.size = vec3(0.5, 0.5, 0)
-        # self.color = vec4()
+        self.rotation = vec3()
+        self.size = vec3(size, size, size)
+        self.color = (255, 255, 255)
 
     def render(self):
-        pos = self.position
         s = self.size
-        front_vertices = [pos.x + s.x, pos.y + s.y, pos.z + s.z,
-                          pos.x + s.x, pos.y - s.y, pos.z + s.z,
-                          pos.x - s.x, pos.y - s.y, pos.z + s.z,
-                          pos.x - s.x, pos.y + s.y, pos.z + s.z]
-        position_group = PositionGroup(pos)
-        color = (255, 0, 255)
+        batch = pyglet.graphics.Batch()
+        translate_and_rotate = rotate(self.rotation, translate(self.position, identity()))
 
-        # batch = pyglet.graphics.Batch()
+        def draw_face(vertices: list, color: iter):
+            batch.add(4, pyglet.graphics.GL_QUADS, translate_and_rotate, ('v3f', vertices),
+                      ('c3B', (*color, *color, *color, *color)))
 
-        # front_vertices = verts[:4]
-        # batch.add(4, pyglet.graphics.GL_QUADS, position_group, ('v3f/static', front_vertices),
-        #           ('c3B/static', (*color, *color, *color, *color)))
+        front_vertices = [
+            -s.x, s.y, s.z,
+            s.x, s.y, s.z,
+            s.x, -s.y, s.z,
+            -s.x, -s.y, s.z
+        ]
+        draw_face(front_vertices, (0, 0, 255))
 
-        back_vertices = [pos.x - s.x, pos.y + s.y, 
-                         pos.x + s.x, pos.y + s.y, 
-                         pos.x + s.x, pos.y - s.y, 
-                         pos.x - s.x, pos.y - s.y, ]
-        print(back_vertices)
-        # batch.add(4, pyglet.graphics.GL_QUADS, position_group, ('v3f/static', back_vertices), ('c3B/static', (*color, *color, *color, *color)))
-        # pyglet.gl.glEnable(pyglet.gl.GL_BLEND)
-        # pyglet.gl.glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
-        pyglet.graphics.draw(4, pyglet.gl.GL_QUADS, ('v2f', back_vertices), ('c3B', (*color, *color, *color, *color)))
+        back_vertices = [
+            s.x, s.y, -s.z,
+            -s.x, s.y, -s.z,
+            -s.x, -s.y, -s.z,
+            s.x, -s.y, -s.z
+        ]
+        draw_face(back_vertices, (0, 255, 0))
 
-        # batch.draw()
+        top_vertices = [
+            -s.x, s.y, -s.z,
+            s.x, s.y, -s.z,
+            s.x, s.y, s.z,
+            -s.x, s.y, s.z
+        ]
+        draw_face(top_vertices, (255, 0, 0))
 
+        bottom_vertices = [
+            s.x, -s.y, -s.z,
+            -s.x, -s.y, -s.z,
+            -s.x, -s.y, s.z,
+            s.x, -s.y, s.z
+        ]
+        draw_face(bottom_vertices, (255, 255, 0))
 
-class PositionGroup(pyglet.graphics.Group):
-    def __init__(self, position: vec3, parent: pyglet.graphics.Group = None):
-        super().__init__(parent)
-        self.position = position
+        left_vertices = [
+            -s.x, s.y, -s.z,
+            -s.x, s.y, s.z,
+            -s.x, -s.y, s.z,
+            -s.x, -s.y, -s.z
+        ]
+        draw_face(left_vertices, (255, 0, 255))
 
-    def set_state(self):
-        pyglet.gl.glMatrixMode(pyglet.gl.GL_MODELVIEW)
-        pyglet.gl.glLoadIdentity()
-        pyglet.gl.glTranslatef(self.position.x, self.position.y, 0)
+        right_vertices = [
+            s.x, s.y, s.z,
+            s.x, s.y, -s.z,
+            s.x, -s.y, -s.z,
+            s.x, -s.y, s.z
+        ]
+        draw_face(right_vertices, (0, 255, 255))
 
-    def unset_state(self):
-        pyglet.gl.glMatrixMode(pyglet.gl.GL_MODELVIEW)
-        pyglet.gl.glLoadIdentity()
+        batch.draw()
 
 
 class Game:
     def __init__(self):
-        self.player = Player()
+        self.cube = Cube()
+        self.player = Camera()
 
     def tick(self):
-        Cube().render()
+        pyglet.gl.glMatrixMode(pyglet.gl.GL_PROJECTION)
+        pyglet.gl.glPushMatrix()
+
+        self.player.update()
+        self.cube.render()
+
+        pyglet.gl.glMatrixMode(pyglet.gl.GL_PROJECTION)
+        pyglet.gl.glPopMatrix()
+
+    def handle_key_event(self, symbol, modifiers, pressed):
+        released = not pressed
+
+        if symbol == pyglet.window.key.ESCAPE and released:
+            exit(0)
+        elif symbol != pyglet.window.key.ESCAPE:
+            print("Key event:", symbol, modifiers, pressed)
+
+        self.player.handle_key(symbol, pressed)

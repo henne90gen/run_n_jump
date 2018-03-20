@@ -3,7 +3,7 @@ from pyglet.gl import *
 import math
 
 
-class Player:
+class Camera:
     def __init__(self):
         self.position = vec3()
         self.direction = vec3(0, 0, -1)
@@ -21,11 +21,10 @@ class Player:
         elif symbol == pyglet.window.key.S and pressed:
             self.position.z -= 5
 
-        horizontal_direction = vec2(self.direction.x, self.direction.z)
+        horizontal_direction = self.direction.to_vec2(['x', 'z'])
         if symbol == pyglet.window.key.E and pressed:
             horizontal_direction.rotate(5)
         elif symbol == pyglet.window.key.Q and pressed:
             horizontal_direction.rotate(-5)
         self.direction.x = horizontal_direction.x
         self.direction.z = horizontal_direction.y
-        print(self.direction)

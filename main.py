@@ -1,86 +1,74 @@
 from datetime import datetime
-import pyglet
 import hot_reload
+
+import pyglet
+from pyglet.gl import *
 
 import game
 
 
-module_whitelist = ['game']
-
-num_frames = 0
-start_time = datetime.now()
-
-window = pyglet.window.Window(width=1280, height=720, resizable=True)
-window.set_caption("Tower Defense")
-
-g = game.Game()
+MODULE_WHITELIST = ['game']
 
 
-def handle_key(symbol, modifiers, key_down):
-    print("KeyEvent", key_down, symbol, modifiers)
+class Window(pyglet.window.Window):
+    def __init__(self, width, height, resizable: bool=False):
+        super(Window, self).__init__(width, height, resizable=resizable)
+
+        glEnable(GL_DEPTH_TEST)
+        glEnable(pyglet.gl.GL_BLEND)
+        glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
+        glClearColor(0, 0, 0, 1)
+
+        self.num_frames = 0
+        self.start_time = datetime.now()
+
+        self.game = game.Game()
+
+    def show_average_time(self):
+        self.num_frames += 1
+        end = datetime.now()
+        diff = end - self.start_time
+        average = diff.total_seconds() * 1000.0 / self.num_frames
+        average_string = '%.5f' % average
+        self.set_caption("Tower Defense " + str(average_string))
+
+        if diff.total_seconds() > 1:
+            self.start_time = end
+            self.num_frames = 0
+
+    def on_draw(*args):
+        # Hack required for pyglets 'schedule_interval' to work
+        self = args[0]
+
+        hot_reload.reload_all(MODULE_WHITELIST)
+
+        self.clear()
+        self.game.tick()
+        self.show_average_time()
+
+    def on_resize(self, width, height):
+        glViewport(0, 0, width, height)
+
+        glMatrixMode(GL_PROJECTION)
+        glLoadIdentity()
+
+        aspect_ratio = width / height
+        gluPerspective(75, aspect_ratio, 1, 1000)
+
+        glMatrixMode(GL_MODELVIEW)
+        glLoadIdentity()
+
+    def on_key_press(self, symbol, modifiers):
+        self.game.handle_key_event(symbol, modifiers, True)
+
+    def on_key_release(self, symbol, modifiers):
+        self.game.handle_key_event(symbol, modifiers, False)
 
 
-def show_average_time():
-    global num_frames, start_time
-    num_frames += 1
-    end = datetime.now()
-    diff = end - start_time
-    average = diff.total_seconds() * 1000.0 / num_frames
-    average_string = '%.5f' % average
-    window.set_caption("Tower Defense " + str(average_string))
+if __name__ == '__main__':
+    window = Window(width=1280, height=720, resizable=True)
+    window.set_caption("Tower Defense")
 
-    if diff.total_seconds() > 1:
-        start_time = end
-        num_frames = 0
-
-
-@window.event
-def on_key_press(symbol, modifiers):
-    handle_key(symbol, modifiers, True)
-
-
-@window.event
-def on_key_release(symbol, modifiers):
-    handle_key(symbol, modifiers, False)
-
-
-@window.event
-def on_mouse_motion(x, y, dx, dy):
-    pass
-
-
-@window.event
-def on_mouse_press(x, y, button, modifiers):
-    print("MousePress", x, y, button, modifiers)
-
-
-@window.event
-def on_draw(_=None):
-    hot_reload.reload_all(whitelist=module_whitelist, debug=False)
-
-    window.clear()
-
-    draw_rect()
-
-    # g.tick()
-
-    # gs.clean_up()
-
-    show_average_time()
-
-
-def draw_rect():
-    back_vertices = [-1, 1, 0,
-                     1, 1, 0,
-                     1, -1, 0,
-                     -1, -1, 0]
-    # back_vertices = list(map(lambda x: x * 100, back_vertices))
-    # pyglet.gl.glEnable(pyglet.gl.GL_BLEND)
-    # pyglet.gl.glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
-    pyglet.gl.glEnable(pyglet.gl.GL_DEPTH_TEST)
-    pyglet.graphics.draw(4, pyglet.gl.GL_QUADS, ('v3f', back_vertices))
-
-
-pyglet.clock.schedule_interval(on_draw, 1 / 120.0)
-pyglet.clock.set_fps_limit(120)
-pyglet.app.run()
+    pyglet.clock.schedule_interval(window.on_draw, 1 / 120.0)
+    pyglet.clock.set_fps_limit(120)
+    pyglet.app.run()
