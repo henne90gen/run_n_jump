@@ -75,17 +75,11 @@ class Cube:
 class Game:
     def __init__(self):
         self.cube = Cube()
-        self.player = Camera()
+        self.camera = Camera()
 
-    def tick(self):
-        pyglet.gl.glMatrixMode(pyglet.gl.GL_PROJECTION)
-        pyglet.gl.glPushMatrix()
-
-        self.player.update()
-        self.cube.render()
-
-        pyglet.gl.glMatrixMode(pyglet.gl.GL_PROJECTION)
-        pyglet.gl.glPopMatrix()
+    def tick(self, frame_time: float):
+        with self.camera.update(frame_time):
+            self.cube.render()
 
     def handle_key_event(self, symbol, modifiers, pressed):
         released = not pressed
@@ -95,4 +89,4 @@ class Game:
         elif symbol != pyglet.window.key.ESCAPE:
             print("Key event:", symbol, modifiers, pressed)
 
-        self.player.handle_key(symbol, pressed)
+        self.camera.handle_key(symbol, pressed)

@@ -6,12 +6,11 @@ from pyglet.gl import *
 
 import game
 
-
 MODULE_WHITELIST = ['game']
 
 
 class Window(pyglet.window.Window):
-    def __init__(self, width, height, resizable: bool=False):
+    def __init__(self, width, height, resizable: bool = False):
         super(Window, self).__init__(width, height, resizable=resizable)
 
         glEnable(GL_DEPTH_TEST)
@@ -21,6 +20,7 @@ class Window(pyglet.window.Window):
 
         self.num_frames = 0
         self.start_time = datetime.now()
+        self.frame_start_time = datetime.now()
 
         self.game = game.Game()
 
@@ -40,10 +40,14 @@ class Window(pyglet.window.Window):
         # Hack required for pyglets 'schedule_interval' to work
         self = args[0]
 
+        end = datetime.now()
+        frame_time = (end - self.start_time).total_seconds()
+        self.start_time = datetime.now()
+
         hot_reload.reload_all(MODULE_WHITELIST)
 
         self.clear()
-        self.game.tick()
+        self.game.tick(frame_time)
         self.show_average_time()
 
     def on_resize(self, width, height):

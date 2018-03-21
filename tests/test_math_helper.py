@@ -28,3 +28,8 @@ class Vec2Test(unittest.TestCase):
     def test_spread(self):
         v = vec2(1, 2)
         self.assertEqual([1, 2], [*v])
+
+    def test_sub(self):
+        v1 = vec2(1, 2)
+        v2 = vec2(4, 5)
+        self.assertEqual(v1 - v2, vec2(-3, -3))

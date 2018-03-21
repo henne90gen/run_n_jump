@@ -6,6 +6,9 @@ class vec2:
         self.x = x
         self.y = y
 
+    def __str__(self):
+        return "vec2(" + str(self.x) + ", " + str(self.y) + ")"
+
     def rotate(self, angle: float):
         angle = (angle * math.pi) / 180
         x = math.cos(angle) * self.x - math.sin(angle) * self.y
@@ -22,6 +25,11 @@ class vec2:
         if type(other) != vec2:
             raise AttributeError
         return vec2(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        if type(other) != vec2:
+            raise AttributeError
+        return vec2(self.x - other.x, self.y - other.y)
 
     def __getitem__(self, item):
         if item == 'x' or item == 0:
@@ -58,6 +66,16 @@ class vec3:
             raise AttributeError
         return vec3(self.x + other.x, self.y + other.y, self.z + other.z)
 
+    def __sub__(self, other):
+        if type(other) != vec3:
+            raise AttributeError
+        return vec3(self.x - other.x, self.y - other.y, self.z - other.z)
+
+    def __mul__(self, other):
+        if type(other) != float:
+            raise AttributeError
+        return vec3(self.x * other, self.y * other, self.z * other)
+
     def __getitem__(self, item):
         if item == 'x' or item == 0:
             return self.x
@@ -76,6 +94,16 @@ class vec3:
             self.z = value
         else:
             raise IndexError
+
+    @property
+    def length(self):
+        return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
+
+    def normalize(self):
+        length = self.length
+        self.x /= length
+        self.y /= length
+        self.z /= length
 
     def to_vec2(self, component_mapping) -> vec2:
         v = vec2()
