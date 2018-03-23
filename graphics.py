@@ -1,4 +1,5 @@
 from pyglet.gl import *
+
 from math_helper import vec3
 
 

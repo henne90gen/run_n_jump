@@ -13,6 +13,8 @@ class Window(pyglet.window.Window):
     def __init__(self, width, height, resizable: bool = False):
         super(Window, self).__init__(width, height, resizable=resizable)
 
+        self.set_exclusive_mouse(True)
+
         glEnable(GL_DEPTH_TEST)
         glEnable(pyglet.gl.GL_BLEND)
         glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
@@ -41,8 +43,8 @@ class Window(pyglet.window.Window):
         self = args[0]
 
         end = datetime.now()
-        frame_time = (end - self.start_time).total_seconds()
-        self.start_time = datetime.now()
+        frame_time = (end - self.frame_start_time).total_seconds()
+        self.frame_start_time = datetime.now()
 
         hot_reload.reload_all(MODULE_WHITELIST)
 
@@ -67,6 +69,9 @@ class Window(pyglet.window.Window):
 
     def on_key_release(self, symbol, modifiers):
         self.game.handle_key_event(symbol, modifiers, False)
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.game.handle_mouse_motion_event(dx, dy)
 
 
 if __name__ == '__main__':

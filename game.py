@@ -1,85 +1,57 @@
 import pyglet
 
-from math_helper import vec3
-from graphics import rotate, translate, identity
 from camera import Camera
-
-
-class Cube:
-    def __init__(self, size: int = 10):
-        self.position = vec3()
-        self.rotation = vec3()
-        self.size = vec3(size, size, size)
-        self.color = (255, 255, 255)
-
-    def render(self):
-        s = self.size
-        batch = pyglet.graphics.Batch()
-        translate_and_rotate = rotate(self.rotation, translate(self.position, identity()))
-
-        def draw_face(vertices: list, color: iter):
-            batch.add(4, pyglet.graphics.GL_QUADS, translate_and_rotate, ('v3f', vertices),
-                      ('c3B', (*color, *color, *color, *color)))
-
-        front_vertices = [
-            -s.x, s.y, s.z,
-            s.x, s.y, s.z,
-            s.x, -s.y, s.z,
-            -s.x, -s.y, s.z
-        ]
-        draw_face(front_vertices, (0, 0, 255))
-
-        back_vertices = [
-            s.x, s.y, -s.z,
-            -s.x, s.y, -s.z,
-            -s.x, -s.y, -s.z,
-            s.x, -s.y, -s.z
-        ]
-        draw_face(back_vertices, (0, 255, 0))
-
-        top_vertices = [
-            -s.x, s.y, -s.z,
-            s.x, s.y, -s.z,
-            s.x, s.y, s.z,
-            -s.x, s.y, s.z
-        ]
-        draw_face(top_vertices, (255, 0, 0))
-
-        bottom_vertices = [
-            s.x, -s.y, -s.z,
-            -s.x, -s.y, -s.z,
-            -s.x, -s.y, s.z,
-            s.x, -s.y, s.z
-        ]
-        draw_face(bottom_vertices, (255, 255, 0))
-
-        left_vertices = [
-            -s.x, s.y, -s.z,
-            -s.x, s.y, s.z,
-            -s.x, -s.y, s.z,
-            -s.x, -s.y, -s.z
-        ]
-        draw_face(left_vertices, (255, 0, 255))
-
-        right_vertices = [
-            s.x, s.y, s.z,
-            s.x, s.y, -s.z,
-            s.x, -s.y, -s.z,
-            s.x, -s.y, s.z
-        ]
-        draw_face(right_vertices, (0, 255, 255))
-
-        batch.draw()
+from cube import Cube
+from math_helper import vec2, vec3
+from plane import Plane
 
 
 class Game:
     def __init__(self):
-        self.cube = Cube()
-        self.camera = Camera()
+        self.cameras = [Camera()]
+        self.camera_index = 0
+        position = vec3()
+        size = 10
+        red = vec3(255, 0, 0)
+        green = vec3(0, 255, 0)
+        blue = vec3(0, 0, 255)
+        self.cubes = [
+            Cube(size, position),
+            Cube(size, position + vec3(size * 2), red),
+            Cube(size, position + vec3(0, size * 2, 0), green),
+            Cube(size, position + vec3(0, 0, size * 2), blue),
+        ]
+        vertices = [
+            vec3(-10, -10, -10),
+            vec3(-10, -10, 10),
+            vec3(10, -20, -10),
+            vec3(10, -20, 10),
+
+            vec3(30, -10, -10),
+            vec3(30, -10, 10),
+        ]
+        self.plane = Plane(vertices)
+
+    @property
+    def current_camera(self):
+        return self.cameras[self.camera_index]
+
+    def next_camera(self):
+        self.camera_index += 1
+        if self.camera_index >= len(self.cameras):
+            self.camera_index = 0
+
+        for camera in self.cameras:
+            camera.set_active(False)
+        self.current_camera.set_active(True)
 
     def tick(self, frame_time: float):
-        with self.camera.update(frame_time):
-            self.cube.render()
+        with self.current_camera.update(frame_time):
+            for cube in self.cubes:
+                cube.render()
+            self.plane.render()
+            for camera in self.cameras:
+                camera.render()
 
     def handle_key_event(self, symbol, modifiers, pressed):
         released = not pressed
@@ -89,4 +61,14 @@ class Game:
         elif symbol != pyglet.window.key.ESCAPE:
             print("Key event:", symbol, modifiers, pressed)
 
-        self.camera.handle_key(symbol, pressed)
+            if symbol == pyglet.window.key.TAB and pressed:
+                self.next_camera()
+            elif symbol == pyglet.window.key.SPACE and pressed:
+                self.cameras.append(Camera())
+                self.next_camera()
+
+        self.current_camera.handle_key(symbol, pressed)
+
+    def handle_mouse_motion_event(self, x, y):
+        movement = vec2(x, y)
+        self.current_camera.handle_mouse(movement)

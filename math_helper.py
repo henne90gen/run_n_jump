@@ -31,6 +31,11 @@ class vec2:
             raise AttributeError
         return vec2(self.x - other.x, self.y - other.y)
 
+    def __mul__(self, other):
+        if type(other) != float:
+            raise AttributeError
+        return vec2(self.x * other, self.y * other)
+
     def __getitem__(self, item):
         if item == 'x' or item == 0:
             return self.x
@@ -48,7 +53,7 @@ class vec2:
 
 
 class vec3:
-    def __init__(self, x: int = 0, y: int = 0, z: int = 0):
+    def __init__(self, x: float = 0, y: float = 0, z: float = 0):
         self.x = x
         self.y = y
         self.z = z
@@ -98,6 +103,9 @@ class vec3:
     @property
     def length(self):
         return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
+
+    def copy(self):
+        return vec3(self.x, self.y, self.z)
 
     def normalize(self):
         length = self.length
