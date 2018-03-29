@@ -11,7 +11,7 @@ class Camera:
         self.view_angle = vec2()
         self.key_map = {}
         self.mouse_movement = vec2()
-        self.sensitivity = 1.0
+        self.sensitivity = 0.5
         self.active = True
         self.model = Cube()
 
