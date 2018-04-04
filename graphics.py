@@ -1,6 +1,7 @@
 from pyglet.gl import *
 
 from math_helper import vec3
+from shader import Shader
 
 
 class identity(pyglet.graphics.Group):
@@ -40,3 +41,15 @@ class translate(pyglet.graphics.Group):
     def unset_state(self):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
+
+
+class shader(pyglet.graphics.Group):
+    def __init__(self, s: Shader, parent: pyglet.graphics.Group = None):
+        super().__init__(parent)
+        self.shader = s
+
+    def set_state(self):
+        self.shader.bind()
+
+    def unset_state(self):
+        self.shader.unbind()

@@ -3,34 +3,24 @@ import pyglet
 from camera import Camera
 from cube import Cube
 from math_helper import vec2, vec3
-from plane import Plane
+from terrain import Terrain
 
 
 class Game:
     def __init__(self):
-        self.cameras = [Camera()]
+        self.cameras = [Camera(vec3(-10, 0, -20))]
         self.camera_index = 0
         position = vec3()
-        size = 10
+        size = 1
         red = vec3(255, 0, 0)
         green = vec3(0, 255, 0)
         blue = vec3(0, 0, 255)
         self.cubes = [
-            Cube(size, position),
-            Cube(size, position + vec3(size * 2), red),
-            Cube(size, position + vec3(0, size * 2, 0), green),
-            Cube(size, position + vec3(0, 0, size * 2), blue),
+            Cube(size, position + vec3(size * 3), red),
+            Cube(size, position + vec3(0, size * 3, 0), green),
+            Cube(size, position + vec3(0, 0, size * 3), blue),
         ]
-        vertices = [
-            vec3(-10, -10, -10),
-            vec3(-10, -10, 10),
-            vec3(10, -20, -10),
-            vec3(10, -20, 10),
-
-            vec3(30, -10, -10),
-            vec3(30, -10, 10),
-        ]
-        self.plane = Plane(vertices)
+        self.terrain = Terrain()
 
     @property
     def current_camera(self):
@@ -49,7 +39,7 @@ class Game:
         with self.current_camera.update(frame_time):
             for cube in self.cubes:
                 cube.render()
-            self.plane.render()
+            self.terrain.render()
             for camera in self.cameras:
                 camera.render()
 

@@ -1,5 +1,8 @@
 import math
 import random
+from datetime import datetime
+
+import numpy as np
 
 
 class vec2:
@@ -9,6 +12,9 @@ class vec2:
 
     def __str__(self):
         return "vec2(" + str(self.x) + ", " + str(self.y) + ")"
+
+    def __repr__(self):
+        return str(self)
 
     def rotate(self, angle: float):
         angle = (angle * math.pi) / 180
@@ -54,13 +60,23 @@ class vec2:
 
 
 class vec3:
-    def __init__(self, x: float = 0, y: float = 0, z: float = 0):
-        self.x = x
-        self.y = y
-        self.z = z
+    def __init__(self, x: float = 0, y: float = 0, z: float = 0, arr=None):
+        if arr is not None:
+            if len(arr) != 3:
+                raise AttributeError(f"Can't construct vec3, wrong size of array: {len(arr)}")
+            self.x = arr[0]
+            self.y = arr[1]
+            self.z = arr[2]
+        else:
+            self.x = x
+            self.y = y
+            self.z = z
 
     def __str__(self):
-        return "vec3(" + str(self.x) + ", " + str(self.y) + ", " + str(self.z) + ")"
+        return f"vec3({self.x}, {self.y}, {self.z})"
+
+    def __repr__(self):
+        return str(self)
 
     def __eq__(self, other):
         if type(other) != vec3:
@@ -78,7 +94,7 @@ class vec3:
         return vec3(self.x - other.x, self.y - other.y, self.z - other.z)
 
     def __mul__(self, other):
-        if type(other) != float:
+        if type(other) not in [float, int]:
             raise AttributeError
         return vec3(self.x * other, self.y * other, self.z * other)
 
@@ -101,9 +117,12 @@ class vec3:
         else:
             raise IndexError
 
+    def __hash__(self):
+        return int(f"{self.x}{self.y}{self.z}".replace("-", "").replace(".", ""))
+
     @property
-    def length(self):
-        return math.sqrt(self.x * self.x + self.y * self.y + self.z * self.z)
+    def length(self) -> float:
+        return np.linalg.norm(self.to_list())
 
     def copy(self):
         return vec3(self.x, self.y, self.z)
@@ -113,6 +132,15 @@ class vec3:
         self.x /= length
         self.y /= length
         self.z /= length
+        return self
+
+    def calculate_normal(self, v1, v2):
+        edge1 = v1 - self
+        edge2 = v2 - self
+        return cross(edge1, edge2).normalize()
+
+    def to_list(self) -> list:
+        return [self.x, self.y, self.z]
 
     def to_vec2(self, component_mapping) -> vec2:
         v = vec2()
@@ -128,16 +156,34 @@ class vec3:
         return v
 
 
+def cross(u, v) -> vec3:
+    return vec3(arr=np.cross(u.to_list(), v.to_list()))
+
+
+class timer:
+    def __init__(self):
+        self.start = None
+        self.end = None
+
+    def __enter__(self):
+        self.start = datetime.now()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.end = datetime.now()
+        diff = self.end - self.start
+        print(f"This took {diff.total_seconds()} seconds")
+
+
 gradient = []
 gradient_x = 100
 gradient_y = 100
-for y in range(gradient_y):
+for g_y in range(gradient_y):
     gradient.append([])
-    for x in range(gradient_x):
+    for g_x in range(gradient_x):
         angle = random.random() * 2 * math.pi
         rand_x = math.cos(angle)
         rand_y = math.sin(angle)
-        gradient[y].append(vec2(rand_x, rand_y))
+        gradient[g_y].append(vec2(rand_x, rand_y))
 
 
 # Function to linearly interpolate between a0 and a1

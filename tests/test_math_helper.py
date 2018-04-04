@@ -1,5 +1,5 @@
 import unittest
-from math_helper import vec3, vec2
+from math_helper import vec3, vec2, cross
 import math_helper
 from PIL import Image
 
@@ -37,6 +37,18 @@ class Vec2Test(unittest.TestCase):
         self.assertEqual(v1 - v2, vec2(-3, -3))
 
 
+class MethodTest(unittest.TestCase):
+    def test_cross_product(self):
+        v1 = vec3()
+        v2 = vec3()
+        self.assertEqual(vec3(), cross(v1, v2))
+
+        v1 = vec3(1, 0, 0)
+        v2 = vec3(0, 1, 0)
+        self.assertEqual(vec3(0, 0, 1), cross(v1, v2))
+
+
+@unittest.skip
 class PerlinTest(unittest.TestCase):
     def test_gradient(self):
         pixels = []

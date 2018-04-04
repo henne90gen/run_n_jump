@@ -5,8 +5,8 @@ from math_helper import vec3, vec2
 
 
 class Camera:
-    def __init__(self):
-        self.position = vec3()
+    def __init__(self, pos: vec3 = vec3()):
+        self.position = pos
         self.direction = vec2(0, 1)
         self.view_angle = vec2()
         self.key_map = {}
@@ -65,10 +65,8 @@ class Camera:
         self.model.render()
 
     def __enter__(self):
-        pyglet.gl.glMatrixMode(pyglet.gl.GL_PROJECTION)
-        pyglet.gl.glPushMatrix()
-
         glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
 
         glRotatef(self.view_angle.x, 1, 0, 0)
         glRotatef(self.view_angle.y, 0, 1, 0)

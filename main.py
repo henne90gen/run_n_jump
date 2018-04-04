@@ -5,6 +5,7 @@ import pyglet
 from pyglet.gl import *
 
 import game
+from shader import Shader
 
 MODULE_WHITELIST = ['game']
 
@@ -20,11 +21,15 @@ class Window(pyglet.window.Window):
         glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(0, 0, 0, 1)
 
+        # glEnable(GL_CULL_FACE)
+
         self.num_frames = 0
         self.start_time = datetime.now()
         self.frame_start_time = datetime.now()
 
         self.game = game.Game()
+
+        self.shader = Shader("terrain_vertex.glsl", "terrain_fragment.glsl")
 
     def show_average_time(self):
         self.num_frames += 1
