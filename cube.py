@@ -1,7 +1,9 @@
-import pyglet
+from ctypes import c_float
 
-from graphics import rotate, translate, identity
-from math_helper import vec3
+import pyglet
+from pyglet.gl import *
+
+from math_helper import vec3, mat4, identity, rotate, translate
 
 
 class Cube:
@@ -11,15 +13,12 @@ class Cube:
         self.size = vec3(size, size, size)
         self.color = color
 
-    def render(self):
+    def render(self, view_matrix: mat4, projection_matrix: mat4):
         s = self.size * (1 / 2)
         batch = pyglet.graphics.Batch()
-        translate_and_rotate = rotate(self.rotation,
-                                      translate(self.position,
-                                                identity()))
 
         def draw_face(vertices: list):
-            batch.add(4, pyglet.graphics.GL_QUADS, translate_and_rotate, ('v3f', vertices),
+            batch.add(4, pyglet.graphics.GL_QUADS, None, ('v3f', vertices),
                       ('c3B', (*self.color, *self.color, *self.color, *self.color)))
 
         front_vertices = [
@@ -70,4 +69,27 @@ class Cube:
         ]
         draw_face(right_vertices)
 
+        glMatrixMode(GL_PROJECTION)
+        glPushMatrix()
+        # noinspection PyCallingNonCallable, PyTypeChecker
+        mat = (c_float * 16)(*projection_matrix.to_list())
+        glLoadTransposeMatrixf(mat)
+
+        glMatrixMode(GL_MODELVIEW)
+        glPushMatrix()
+        model_matrix = identity()
+        translate(model_matrix, self.position)
+        rotate(model_matrix, self.rotation)
+        model_view_matrix = view_matrix * model_matrix
+
+        # noinspection PyCallingNonCallable, PyTypeChecker
+        mat = (c_float * 16)(*model_view_matrix.to_list())
+        glLoadTransposeMatrixf(mat)
+
         batch.draw()
+
+        glMatrixMode(GL_MODELVIEW)
+        glPopMatrix()
+
+        glMatrixMode(GL_PROJECTION)
+        glPopMatrix()

@@ -6,6 +6,8 @@ from ctypes import (
 
 from pyglet.gl import *
 
+from math_helper import mat4
+
 
 class Shader:
     def __init__(self, vertex_shader_name: str = "", fragment_shader_name: str = ""):
@@ -92,36 +94,35 @@ class Shader:
         # so this should probably be a class method instead
         glUseProgram(0)
 
-    def uniformf(self, name, *vals):
+    def uniformf(self, name: str, *vals):
         # upload a floating point uniform
         # this program must be currently bound
         # check there are 1-4 values
         if len(vals) in range(1, 5):
             vals = list(map(c_float, vals))
-            location = glGetUniformLocation(self.handle, cast(name, POINTER(c_char)))
-            # print(location, name, bytes(name, "utf-8"))
-            # print(vals)
-
+            location = glGetUniformLocation(self.handle, c_char_p(name.encode("utf-8")))
             # select the correct function
             uniform_functions = {1: glUniform1f, 2: glUniform2f, 3: glUniform3f, 4: glUniform4f}
             uniform_functions[len(vals)](location, *vals)
 
-    def uniformi(self, name, *vals):
+    def uniformi(self, name: str, *vals):
         # upload an integer uniform
         # this program must be currently bound
         # check there are 1-4 values
         if len(vals) in range(1, 5):
             vals = list(map(c_int, vals))
             # select the correct function
+            location = glGetUniformLocation(self.handle, c_char_p(name.encode("utf-8")))
             uniform_functions = {1: glUniform1i, 2: glUniform2i, 3: glUniform3i, 4: glUniform4i}
-            uniform_functions[len(vals)](glGetUniformLocation(self.handle, name), *vals)
+            uniform_functions[len(vals)](location, *vals)
 
-    def uniform_matrixf(self, name, mat):
+    def uniform_matrixf(self, name: str, mat: mat4):
         # upload a uniform matrix
         # works with matrices stored as lists,
         # as well as euclid matrices
         # obtain the uniform location
-        loc = glGetUniformLocation(self.handle, name)
+        location = glGetUniformLocation(self.handle, c_char_p(name.encode("utf-8")))
         # upload the 4x4 floating point matrix
+        mat_values = mat.to_list()
         # noinspection PyCallingNonCallable, PyTypeChecker
-        glUniformMatrix4fv(loc, 1, False, (c_float * 16)(*mat))
+        glUniformMatrix4fv(location, 1, True, (c_float * 16)(*mat_values))

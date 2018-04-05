@@ -160,6 +160,116 @@ def cross(u, v) -> vec3:
     return vec3(arr=np.cross(u.to_list(), v.to_list()))
 
 
+class mat4:
+    """
+    Row-major matrix
+    """
+
+    def __init__(self, arr=None):
+        if arr is None:
+            arr = []
+        self.numbers = []
+        for r in range(4):
+            self.numbers.append([])
+            for c in range(4):
+                if len(arr) > r and len(arr[r]) > c:
+                    num = float(arr[r][c])
+                else:
+                    num = 0
+                self.numbers[r].append(num)
+
+    def __eq__(self, other):
+        if type(other) != mat4:
+            return False
+        for r in range(4):
+            for c in range(4):
+                if self.numbers[r][c] != other.numbers[r][c]:
+                    return False
+        return True
+
+    def __str__(self):
+        return f"\n{self.numbers[0]}\n{self.numbers[1]}\n{self.numbers[2]}\n{self.numbers[3]}\n"
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __mul__(self, other):
+        if type(other) == mat4:
+            return mat4(list(np.matmul(self.numbers, other.numbers)))
+        elif type(other) == vec3:
+            res = list(np.matmul(self.numbers, [other.x, other.y, other.z, 1]))
+            return vec3(arr=res[:-1])
+        else:
+            raise AttributeError
+
+    def to_list(self, column_major=False):
+        res = []
+        if column_major:
+            for r in range(4):
+                for c in range(4):
+                    res.append(self.numbers[c][r])
+        else:
+            for r in range(4):
+                for c in range(4):
+                    res.append(self.numbers[r][c])
+        return res
+
+
+def identity():
+    return mat4([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ])
+
+
+def translate(m: mat4, v: vec3):
+    m1 = mat4()
+    m1.numbers = m.numbers
+    m2 = mat4([
+        [1, 0, 0, v.x],
+        [0, 1, 0, v.y],
+        [0, 0, 1, v.z],
+        [0, 0, 0, 1],
+    ])
+    res = m2 * m1
+    m.numbers = res.numbers
+
+
+def rotate(m: mat4, v: vec3, radians=False):
+    if not radians:
+        v *= math.pi / 180
+
+    precision = 15
+    sin_x = round(math.sin(v.x), precision)
+    cos_x = round(math.cos(v.x), precision)
+    rot_x = mat4([
+        [1, 0, 0, 0],
+        [0, cos_x, -sin_x, 0],
+        [0, sin_x, cos_x, 0],
+        [0, 0, 0, 1]
+    ])
+    sin_y = round(math.sin(v.y), precision)
+    cos_y = round(math.cos(v.y), precision)
+    rot_y = mat4([
+        [cos_y, 0, sin_y, 0],
+        [0, 1, 0, 0],
+        [-sin_y, 0, cos_y, 0],
+        [0, 0, 0, 1]
+    ])
+    sin_z = round(math.sin(v.z), precision)
+    cos_z = round(math.cos(v.z), precision)
+    rot_z = mat4([
+        [cos_z, -sin_z, 0, 0],
+        [sin_z, cos_z, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+    ])
+    res = rot_x * rot_y * rot_z * m
+    m.numbers = res.numbers
+
+
 class timer:
     def __init__(self):
         self.start = None

@@ -11,6 +11,7 @@ class identity(pyglet.graphics.Group):
     def set_state(self):
         glMatrixMode(GL_MODELVIEW)
         glLoadIdentity()
+        print("Identity")
 
 
 class rotate(pyglet.graphics.Group):
@@ -23,6 +24,7 @@ class rotate(pyglet.graphics.Group):
         glRotatef(self.rotation.x, 1, 0, 0)
         glRotatef(self.rotation.y, 0, 1, 0)
         glRotatef(self.rotation.z, 0, 0, 1)
+        print("Rotate")
 
     def unset_state(self):
         glMatrixMode(GL_MODELVIEW)
@@ -37,6 +39,7 @@ class translate(pyglet.graphics.Group):
     def set_state(self):
         glMatrixMode(GL_MODELVIEW)
         glTranslatef(self.position.x, self.position.y, self.position.z)
+        print("Translate")
 
     def unset_state(self):
         glMatrixMode(GL_MODELVIEW)
@@ -50,6 +53,7 @@ class shader(pyglet.graphics.Group):
 
     def set_state(self):
         self.shader.bind()
+        print("Bound shader")
 
     def unset_state(self):
         self.shader.unbind()

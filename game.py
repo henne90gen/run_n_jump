@@ -2,20 +2,23 @@ import pyglet
 
 from camera import Camera
 from cube import Cube
-from math_helper import vec2, vec3
+from math_helper import vec2, vec3, mat4
 from terrain import Terrain
 
 
 class Game:
     def __init__(self):
-        self.cameras = [Camera(vec3(-10, 0, -20))]
+        self.view_matrix = mat4()
+        camera_position = vec3(-10, 0, -20)
+        self.cameras = [Camera(camera_position)]
         self.camera_index = 0
         position = vec3()
-        size = 1
+        size = 10
         red = vec3(255, 0, 0)
         green = vec3(0, 255, 0)
         blue = vec3(0, 0, 255)
         self.cubes = [
+            Cube(size, position, vec3(255, 255, 255)),
             Cube(size, position + vec3(size * 3), red),
             Cube(size, position + vec3(0, size * 3, 0), green),
             Cube(size, position + vec3(0, 0, size * 3), blue),
@@ -35,13 +38,16 @@ class Game:
             camera.set_active(False)
         self.current_camera.set_active(True)
 
-    def tick(self, frame_time: float):
+    def tick(self, projection_matrix, frame_time: float):
         with self.current_camera.update(frame_time):
+
             for cube in self.cubes:
-                cube.render()
-            self.terrain.render()
+                cube.render(self.current_camera.view_matrix, projection_matrix)
+
+            self.terrain.render(self.current_camera.view_matrix, projection_matrix)
+
             for camera in self.cameras:
-                camera.render()
+                camera.render(self.current_camera.view_matrix, projection_matrix)
 
     def handle_key_event(self, symbol, modifiers, pressed):
         released = not pressed
@@ -58,6 +64,7 @@ class Game:
                 self.next_camera()
 
         self.current_camera.handle_key(symbol, pressed)
+        self.terrain.handle_key(symbol, pressed)
 
     def handle_mouse_motion_event(self, x, y):
         movement = vec2(x, y)

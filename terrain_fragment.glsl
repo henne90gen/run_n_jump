@@ -2,6 +2,10 @@ varying vec4 v_Color;
 varying vec4 v_Normal;
 varying vec3 v_LightDirection;
 
+uniform mat4 u_Model;
+uniform mat4 u_View;
+uniform mat4 u_Projection;
+
 void main() {
     gl_FragColor = v_Color;
 

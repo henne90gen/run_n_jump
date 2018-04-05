@@ -1,11 +1,12 @@
+import math
 from datetime import datetime
-import hot_reload
 
 import pyglet
 from pyglet.gl import *
 
 import game
-from shader import Shader
+import hot_reload
+from math_helper import identity, mat4
 
 MODULE_WHITELIST = ['game']
 
@@ -27,9 +28,8 @@ class Window(pyglet.window.Window):
         self.start_time = datetime.now()
         self.frame_start_time = datetime.now()
 
+        self.projection_matrix = identity()
         self.game = game.Game()
-
-        self.shader = Shader("terrain_vertex.glsl", "terrain_fragment.glsl")
 
     def show_average_time(self):
         self.num_frames += 1
@@ -54,27 +54,34 @@ class Window(pyglet.window.Window):
         hot_reload.reload_all(MODULE_WHITELIST)
 
         self.clear()
-        self.game.tick(frame_time)
+        self.game.tick(self.projection_matrix, frame_time)
         self.show_average_time()
 
     def on_resize(self, width, height):
         glViewport(0, 0, width, height)
 
-        glMatrixMode(GL_PROJECTION)
-        glLoadIdentity()
-
         aspect_ratio = width / height
-        gluPerspective(75, aspect_ratio, 1, 1000)
-
-        glMatrixMode(GL_MODELVIEW)
-        glLoadIdentity()
+        fovy = 75
+        z_near = 1
+        z_far = 1000
+        f = 1 / (math.tan(fovy * math.pi / 360))
+        temp1 = (z_far + z_near) / (z_near - z_far)
+        temp2 = (2 * z_far * z_near) / (z_near - z_far)
+        self.projection_matrix = mat4([
+            [f / aspect_ratio, 0, 0, 0],
+            [0, f, 0, 0],
+            [0, 0, temp1, temp2],
+            [0, 0, -1, 0],
+        ])
 
     def on_key_press(self, symbol, modifiers):
         self.game.handle_key_event(symbol, modifiers, True)
 
+    # noinspection PyMethodOverriding
     def on_key_release(self, symbol, modifiers):
         self.game.handle_key_event(symbol, modifiers, False)
 
+    # noinspection PyMethodOverriding
     def on_mouse_motion(self, x, y, dx, dy):
         self.game.handle_mouse_motion_event(dx, dy)
 

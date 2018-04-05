@@ -1,11 +1,12 @@
 from pyglet.gl import *
 
 from cube import Cube
-from math_helper import vec3, vec2
+from math_helper import vec3, vec2, identity, rotate, translate, mat4
 
 
 class Camera:
     def __init__(self, pos: vec3 = vec3()):
+        self.view_matrix = identity()
         self.position = pos
         self.direction = vec2(0, 1)
         self.view_angle = vec2()
@@ -51,31 +52,27 @@ class Camera:
             self.view_angle.x -= self.mouse_movement.y * scale_factor
             self.mouse_movement = vec2()
 
-        # This is required for the 'with camera.update():' to work
+        # This is required for 'with camera.update():' to work
         return self
 
-    def render(self):
+    def render(self, view_matrix: mat4, projection_matrix: mat4):
         if self.active:
             return
 
+        # FIXME this is somehow broken
         self.model.rotation = vec3(0, -self.view_angle.y, 0)
         self.model.position = self.position.copy()
         self.model.position.x *= -1
         self.model.position.z *= -1
-        self.model.render()
+        self.model.render(view_matrix, projection_matrix)
 
     def __enter__(self):
-        glMatrixMode(GL_PROJECTION)
-        glPushMatrix()
-
-        glRotatef(self.view_angle.x, 1, 0, 0)
-        glRotatef(self.view_angle.y, 0, 1, 0)
-
-        glTranslatef(self.position.x, self.position.y, self.position.z)
+        self.view_matrix = identity()
+        translate(self.view_matrix, self.position)
+        rotate(self.view_matrix, vec3(self.view_angle.x, self.view_angle.y, 0))
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pyglet.gl.glMatrixMode(pyglet.gl.GL_PROJECTION)
-        pyglet.gl.glPopMatrix()
+        pass
 
     def handle_key(self, symbol, pressed):
         if pressed:

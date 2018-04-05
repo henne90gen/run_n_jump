@@ -1,7 +1,9 @@
 import unittest
-from math_helper import vec3, vec2, cross
-import math_helper
+
 from PIL import Image
+
+import math_helper
+from math_helper import vec3, vec2, cross, mat4, identity, translate, rotate
 
 
 class Vec3Test(unittest.TestCase):
@@ -46,6 +48,146 @@ class MethodTest(unittest.TestCase):
         v1 = vec3(1, 0, 0)
         v2 = vec3(0, 1, 0)
         self.assertEqual(vec3(0, 0, 1), cross(v1, v2))
+
+    def test_translate(self):
+        m = identity()
+        v = vec3(1, 2, 3)
+        translate(m, v)
+        self.assertEqual(mat4([
+            [1, 0, 0, 1],
+            [0, 1, 0, 2],
+            [0, 0, 1, 3],
+            [0, 0, 0, 1]
+        ]), m)
+
+    def test_rotate_around_x(self):
+        m = identity()
+        v1 = vec3(90)
+        rotate(m, v1)
+        self.assertEqual(mat4([
+            [1, 0, 0, 0],
+            [0, 0, -1, 0],
+            [0, 1, 0, 0],
+            [0, 0, 0, 1]
+        ]), m)
+        v2 = m * vec3(0, 1, 0)
+        self.assertEqual(vec3(0, 0, 1), v2)
+
+    def test_rotate_around_y(self):
+        m = identity()
+        v1 = vec3(0, 90)
+        rotate(m, v1)
+        self.assertEqual(mat4([
+            [0, 0, 1, 0],
+            [0, 1, 0, 0],
+            [-1, 0, 0, 0],
+            [0, 0, 0, 1]
+        ]), m)
+        v2 = m * vec3(1, 0, 0)
+        self.assertEqual(vec3(0, 0, -1), v2)
+
+    def test_rotate_around_x_and_y(self):
+        m = identity()
+        v1 = vec3(90, 90)
+        rotate(m, v1)
+        self.assertEqual(mat4([
+            [0, 1, 0, 0],
+            [0, 0, -1, 0],
+            [-1, 0, 0, 0],
+            [0, 0, 0, 1]
+        ]), m)
+        v2 = m * vec3(0, 1, 0)
+        self.assertEqual(vec3(1, 0, 0), v2)
+
+    def test_rotate_and_translate(self):
+        m = identity()
+        rot = vec3(90)
+        trans = vec3(1, 2, 3)
+        rotate(m, rot)
+        translate(m, trans)
+        self.assertEqual(mat4([
+            [1.0, 0.0, 0.0, 1.0],
+            [0.0, 0.0, -1.0, 2.0],
+            [0.0, 1.0, 0.0, 3.0],
+            [0.0, 0.0, 0.0, 1.0]
+        ]), m)
+        v = m * vec3(0, 1, 0)
+        self.assertEqual(vec3(1, 2, 4), v)
+
+
+class Mat4Test(unittest.TestCase):
+    def test_init(self):
+        m = mat4()
+        self.assertEqual([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], m.numbers)
+        m = mat4([[1, 2, 3, 4]])
+        self.assertEqual([[1, 2, 3, 4], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], m.numbers)
+
+    def test_mul_identity(self):
+        m1 = identity()
+        m2 = identity()
+        self.assertEqual(identity(), m1 * m2)
+        self.assertEqual(identity(), m1)
+        self.assertEqual(identity(), m2)
+
+    def test_mul_mat4(self):
+        m1 = mat4([
+            [1, 0, 0, 1],
+            [0, 1, 0, 2],
+            [0, 0, 1, 3],
+            [0, 0, 0, 1]
+        ])
+        m2 = mat4([
+            [1, 0, 0, 1],
+            [0, 1, 0, 2],
+            [0, 0, 1, 3],
+            [0, 0, 0, 1]
+        ])
+        self.assertEqual(mat4([
+            [1, 0, 0, 2],
+            [0, 1, 0, 4],
+            [0, 0, 1, 6],
+            [0, 0, 0, 1]
+        ]), m1 * m2)
+        self.assertEqual(mat4([
+            [1, 0, 0, 1],
+            [0, 1, 0, 2],
+            [0, 0, 1, 3],
+            [0, 0, 0, 1]
+        ]), m1)
+        self.assertEqual(mat4([
+            [1, 0, 0, 1],
+            [0, 1, 0, 2],
+            [0, 0, 1, 3],
+            [0, 0, 0, 1]
+        ]), m2)
+
+    def test_mul_vec3(self):
+        m = mat4([
+            [1, 0, 0, 1],
+            [0, 1, 0, 2],
+            [0, 0, 1, 3],
+            [0, 0, 0, 1]
+        ])
+        v = vec3(2, 3, 4)
+        self.assertEqual(vec3(3, 5, 7), m * v)
+        self.assertEqual(mat4([
+            [1, 0, 0, 1],
+            [0, 1, 0, 2],
+            [0, 0, 1, 3],
+            [0, 0, 0, 1]
+        ]), m)
+        self.assertEqual(vec3(2, 3, 4), v)
+
+    def test_to_list(self):
+        m = mat4([
+            [1, 0, 0, 1],
+            [0, 1, 0, 2],
+            [0, 0, 1, 3],
+            [0, 0, 0, 1]
+        ])
+        self.assertEqual([1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 2.0, 0.0, 0.0, 1.0, 3.0, 0.0, 0.0, 0.0, 1.0], m.to_list())
+        self.assertEqual([1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 2.0, 3.0, 1.0],
+                         m.to_list(True))
 
 
 @unittest.skip
