@@ -101,11 +101,11 @@ class Terrain:
 
         self.data_updated = Value("b", False)
         num_vertices = int((self.width / self.step) * (self.height / self.step) * 3)
-        self.vertices = Array("f", num_vertices)
-        self.colors = Array("f", num_vertices)
-        self.normals = Array("f", num_vertices)
+        self.vertices = Array("f", num_vertices, lock=False)
+        self.colors = Array("f", num_vertices, lock=False)
+        self.normals = Array("f", num_vertices, lock=False)
         num_indices = int((self.width / self.step - 1) * (self.height / self.step - 1) * 2 * 3)
-        self.indices = Array("i", num_indices)
+        self.indices = Array("i", num_indices, lock=False)
         print(f"Number of vertices: {num_vertices}, Number of indices: {num_indices}")
 
         self.shader = TerrainShader(self)
@@ -188,6 +188,9 @@ def generate_vertices_and_indices(width, height, step, octaves, persistence, lac
             colors[index + 0] = color.x
             colors[index + 1] = color.y
             colors[index + 2] = color.z
+            normals[index + 0] = 0
+            normals[index + 1] = 0
+            normals[index + 2] = 0
             normal_aggregation.append([])
 
     current_index = 0
@@ -210,9 +213,15 @@ def generate_vertices_and_indices(width, height, step, octaves, persistence, lac
             v3 = vec3(vertices[index_v3 * 3], vertices[index_v3 * 3 + 1], vertices[index_v3 * 3 + 2])
 
             normal = v1.calculate_normal(v2, v3)
-            normal_aggregation[index_v1].append(normal)
-            normal_aggregation[index_v2].append(normal)
-            normal_aggregation[index_v3].append(normal)
+            normals[index_v1 * 3] += normal.x
+            normals[index_v1 * 3 + 1] += normal.y
+            normals[index_v1 * 3 + 2] += normal.z
+            normals[index_v2 * 3] += normal.x
+            normals[index_v2 * 3 + 1] += normal.y
+            normals[index_v2 * 3 + 2] += normal.z
+            normals[index_v3 * 3] += normal.x
+            normals[index_v3 * 3 + 1] += normal.y
+            normals[index_v3 * 3 + 2] += normal.z
 
             # bottom right
             index_v1 = row * width // step + col + 1
@@ -231,19 +240,15 @@ def generate_vertices_and_indices(width, height, step, octaves, persistence, lac
             v3 = vec3(vertices[index_v3 * 3], vertices[index_v3 * 3 + 1], vertices[index_v3 * 3 + 2])
 
             normal = v1.calculate_normal(v2, v3)
-            normal_aggregation[index_v1].append(normal)
-            normal_aggregation[index_v2].append(normal)
-            normal_aggregation[index_v3].append(normal)
-
-    current_index = 0
-    for i in range(len(normal_aggregation)):
-        normal = sum(normal_aggregation[i], vec3()).normalize()
-        if normal.y < 0:
-            normal *= -1
-        normals[current_index + 0] = normal.x
-        normals[current_index + 1] = normal.y
-        normals[current_index + 2] = normal.z
-        current_index += 3
+            normals[index_v1 * 3] += normal.x
+            normals[index_v1 * 3 + 1] += normal.y
+            normals[index_v1 * 3 + 2] += normal.z
+            normals[index_v2 * 3] += normal.x
+            normals[index_v2 * 3 + 1] += normal.y
+            normals[index_v2 * 3 + 2] += normal.z
+            normals[index_v3 * 3] += normal.x
+            normals[index_v3 * 3 + 1] += normal.y
+            normals[index_v3 * 3 + 2] += normal.z
 
     print(f"Generated terrain using {len(vertices)} vertices and {len(indices) // 3} triangles")
     data_updated.value = True
