@@ -37,8 +37,13 @@ class TerrainShader(Shader):
             vertex_data.append(normals[i + 1])
             vertex_data.append(normals[i + 2])
 
+        last = 0
+        for current in range(9, len(vertex_data), 9):
+            print(vertex_data[last:current])
+            last = current
+
         # noinspection PyCallingNonCallable,PyTypeChecker
-        vertex_data_gl = (GLfloat * len(vertices))(*vertices)
+        vertex_data_gl = (GLfloat * len(vertex_data))(*vertex_data)
         glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_id)
         vertex_buffer_size = sizeof(vertex_data_gl)
         glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertex_data_gl, GL_STATIC_DRAW)
@@ -89,7 +94,7 @@ class TerrainShader(Shader):
 
 
 class Terrain:
-    def __init__(self, width: int = 100, height: int = 100):
+    def __init__(self, width: int = 200, height: int = 200):
         self.width = width
         self.height = height
         self.position = vec3()
@@ -180,6 +185,7 @@ def generate_vertices_and_indices(width, height, step, octaves, persistence, lac
                               repeaty=height,
                               base=0)
             y *= 75
+            y = (row + col) / step
             y -= 30
             position = vec3(col, y, row)
             color = vec3(1, 1, 1)
