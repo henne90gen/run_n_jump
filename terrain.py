@@ -28,19 +28,12 @@ class TerrainShader(Shader):
             vertex_data.append(vertices[i])
             vertex_data.append(vertices[i + 1])
             vertex_data.append(vertices[i + 2])
-            if vertices[i] == 0 and vertices[i + 1] == 0 and vertices[i + 2] == 0:
-                print("Adding null")
             vertex_data.append(colors[i])
             vertex_data.append(colors[i + 1])
             vertex_data.append(colors[i + 2])
             vertex_data.append(normals[i])
             vertex_data.append(normals[i + 1])
             vertex_data.append(normals[i + 2])
-
-        last = 0
-        for current in range(9, len(vertex_data), 9):
-            print(vertex_data[last:current])
-            last = current
 
         # noinspection PyCallingNonCallable,PyTypeChecker
         vertex_data_gl = (GLfloat * len(vertex_data))(*vertex_data)
@@ -100,7 +93,7 @@ class Terrain:
         self.position = vec3()
         self.rotation = vec3()
         self.color = vec3(255, 255, 255)
-        self.step = 10
+        self.step = 1
         self.octaves = 6
         self.persistence = 0.5
         self.lacunarity = 2.0
@@ -185,7 +178,6 @@ def generate_vertices_and_indices(width, height, step, octaves, persistence, lac
                               repeaty=height,
                               base=0)
             y *= 75
-            y = (row + col) / step
             y -= 30
             position = vec3(col, y, row)
             color = vec3(1, 1, 1)
@@ -201,25 +193,21 @@ def generate_vertices_and_indices(width, height, step, octaves, persistence, lac
     current_index = 0
     for row in range(height // step - 1):
         for col in range(width // step - 1):
-            print(current_index, row, col)
             # top left
             index_v1 = row * width // step + col
             indices[current_index] = index_v1
             current_index += 1
-            print(current_index)
-            v1 = vec3(vertices[index_v1], vertices[index_v1 + 1], vertices[index_v1 + 2])
+            v1 = vec3(vertices[index_v1 * 3], vertices[index_v1 * 3 + 1], vertices[index_v1 * 3 + 2])
 
             index_v2 = (row + 1) * width // step + col
             indices[current_index] = index_v2
             current_index += 1
-            print(current_index)
-            v2 = vec3(vertices[index_v2], vertices[index_v2 + 1], vertices[index_v2 + 2])
+            v2 = vec3(vertices[index_v2 * 3], vertices[index_v2 * 3 + 1], vertices[index_v2 * 3 + 2])
 
             index_v3 = row * width // step + col + 1
             indices[current_index] = index_v3
             current_index += 1
-            print(current_index)
-            v3 = vec3(vertices[index_v3], vertices[index_v3 + 1], vertices[index_v3 + 2])
+            v3 = vec3(vertices[index_v3 * 3], vertices[index_v3 * 3 + 1], vertices[index_v3 * 3 + 2])
 
             normal = v1.calculate_normal(v2, v3)
             normal_aggregation[index_v1].append(normal)
@@ -230,20 +218,17 @@ def generate_vertices_and_indices(width, height, step, octaves, persistence, lac
             index_v1 = row * width // step + col + 1
             indices[current_index] = index_v1
             current_index += 1
-            print(current_index)
-            v1 = vec3(vertices[index_v1], vertices[index_v1 + 1], vertices[index_v1 + 2])
+            v1 = vec3(vertices[index_v1 * 3], vertices[index_v1 * 3 + 1], vertices[index_v1 * 3 + 2])
 
             index_v2 = (row + 1) * width // step + col
             indices[current_index] = index_v2
             current_index += 1
-            print(current_index)
-            v2 = vec3(vertices[index_v2], vertices[index_v2 + 1], vertices[index_v2 + 2])
+            v2 = vec3(vertices[index_v2 * 3], vertices[index_v2 * 3 + 1], vertices[index_v2 * 3 + 2])
 
             index_v3 = (row + 1) * width // step + col + 1
             indices[current_index] = index_v3
             current_index += 1
-            print(current_index)
-            v3 = vec3(vertices[index_v3], vertices[index_v3 + 1], vertices[index_v3 + 2])
+            v3 = vec3(vertices[index_v3 * 3], vertices[index_v3 * 3 + 1], vertices[index_v3 * 3 + 2])
 
             normal = v1.calculate_normal(v2, v3)
             normal_aggregation[index_v1].append(normal)
