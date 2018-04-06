@@ -85,7 +85,7 @@ class Shader:
             # all is well, so we are linked
             self.linked = True
 
-    def bind(self):
+    def bind(self, *args):
         # bind the program
         glUseProgram(self.handle)
 

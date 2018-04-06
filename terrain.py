@@ -1,4 +1,5 @@
 from ctypes import sizeof, c_float
+from multiprocessing import Process, Value, Array
 
 import noise
 from pyglet.gl import *
@@ -8,30 +9,9 @@ from shader import Shader
 
 
 class TerrainShader(Shader):
-    def __init__(self):
+    def __init__(self, terrain):
         super().__init__("terrain_vertex.glsl", "terrain_fragment.glsl")
-
-    def bind(self):
-        super().bind()
-
-        glBindAttribLocation(self.handle, 0, bytes("a_Position", "utf-8"))
-        glBindAttribLocation(self.handle, 1, bytes("a_Color", "utf-8"))
-        glBindAttribLocation(self.handle, 2, bytes("a_Normal", "utf-8"))
-
-
-class Terrain:
-    def __init__(self, width: int = 200, height: int = 200):
-        self.width = width
-        self.height = height
-        self.position = vec3()
-        self.rotation = vec3()
-        self.vertices = []
-        self.indices = []
-        self.color = vec3(255, 255, 255)
-        self.octaves = 6
-        self.persistence = 0.5
-        self.lacunarity = 2.0
-        self.light_position = vec3(50, -10, 50)
+        self.terrain = terrain
 
         self.vertex_array_id = GLuint()
         glGenVertexArrays(1, self.vertex_array_id)
@@ -42,120 +22,38 @@ class Terrain:
         self.index_buffer_id = GLuint()
         glGenBuffers(1, self.index_buffer_id)
 
-        self.shader = TerrainShader()
-        self.regenerate_terrain()
-
-    def regenerate_terrain(self):
-        with timer():
-            self.generate_vertices_and_indices()
-            self.upload_data()
-
-    def upload_data(self):
+    def upload_data(self, vertices, colors, normals, indices):
         vertex_data = []
-        for v, c, n in self.vertices:
-            vertex_data.append(v.x)
-            vertex_data.append(v.y)
-            vertex_data.append(v.z)
-            vertex_data.append(c.x)
-            vertex_data.append(c.y)
-            vertex_data.append(c.z)
-            vertex_data.append(n.x)
-            vertex_data.append(n.y)
-            vertex_data.append(n.z)
+        for i in range(0, len(vertices), 3):
+            vertex_data.append(vertices[i])
+            vertex_data.append(vertices[i + 1])
+            vertex_data.append(vertices[i + 2])
+            if vertices[i] == 0 and vertices[i + 1] == 0 and vertices[i + 2] == 0:
+                print("Adding null")
+            vertex_data.append(colors[i])
+            vertex_data.append(colors[i + 1])
+            vertex_data.append(colors[i + 2])
+            vertex_data.append(normals[i])
+            vertex_data.append(normals[i + 1])
+            vertex_data.append(normals[i + 2])
 
         # noinspection PyCallingNonCallable,PyTypeChecker
-        vertex_data_gl = (GLfloat * len(vertex_data))(*vertex_data)
-
+        vertex_data_gl = (GLfloat * len(vertices))(*vertices)
         glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_id)
         vertex_buffer_size = sizeof(vertex_data_gl)
         glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertex_data_gl, GL_STATIC_DRAW)
 
         # noinspection PyCallingNonCallable,PyTypeChecker
-        index_data_gl = (GLint * len(self.indices))(*self.indices)
-
+        index_data_gl = (GLint * len(indices))(*indices)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.index_buffer_id)
         index_buffer_size = sizeof(index_data_gl)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, GL_STATIC_DRAW)
 
         print(f"Uploaded {vertex_buffer_size} bytes of vertices and {index_buffer_size} bytes of indices")
 
-    def generate_vertices_and_indices(self):
-        print("Generating terrain...")
-        self.vertices = []
-        normals = []
-        step = 10
-        scale = 100.0
-        for row in range(0, self.height, step):
-            for col in range(0, self.width, step):
-                y = noise.pnoise2(col / scale,
-                                  row / scale,
-                                  octaves=self.octaves,
-                                  persistence=self.persistence,
-                                  lacunarity=self.lacunarity,
-                                  repeatx=self.width,
-                                  repeaty=self.height,
-                                  base=0)
-                c = y + 0.5
-                y *= 75
-                y -= 30
-                position = vec3(col, y, row)
-                # color = vec3(random.random(), random.random(), random.random())
-                color = vec3(1, 1, 1)
-                vertex = (position, color, vec3(1.0))
-                self.vertices.append(vertex)
-                normals.append([])
+    def bind(self, model_matrix, view_matrix, projection_matrix):
+        super().bind()
 
-        self.indices = []
-        for row in range(self.height // step - 1):
-            for col in range(self.width // step - 1):
-                # top left
-                index_v1 = row * self.width // step + col
-                self.indices.append(index_v1)
-                v1 = self.vertices[index_v1][0]
-
-                index_v2 = (row + 1) * self.width // step + col
-                self.indices.append(index_v2)
-                v2 = self.vertices[index_v2][0]
-
-                index_v3 = row * self.width // step + col + 1
-                self.indices.append(index_v3)
-                v3 = self.vertices[index_v3][0]
-
-                normal = v1.calculate_normal(v2, v3)
-                normals[index_v1].append(normal)
-                normals[index_v2].append(normal)
-                normals[index_v3].append(normal)
-
-                # bottom right
-                index_v1 = row * self.width // step + col + 1
-                self.indices.append(index_v1)
-                v1 = self.vertices[index_v1][0]
-
-                index_v2 = (row + 1) * self.width // step + col
-                self.indices.append(index_v2)
-                v2 = self.vertices[index_v2][0]
-
-                index_v3 = (row + 1) * self.width // step + col + 1
-                self.indices.append(index_v3)
-                v3 = self.vertices[index_v3][0]
-
-                normal = v1.calculate_normal(v2, v3)
-                normals[index_v1].append(normal)
-                normals[index_v2].append(normal)
-                normals[index_v3].append(normal)
-
-        normals = list(map(lambda x: sum(x, vec3()).normalize(), normals))
-
-        for index, normal in enumerate(normals):
-            if normal.y < 0:
-                normal *= -1
-            self.vertices[index][2].x = normal.x
-            self.vertices[index][2].y = normal.y
-            self.vertices[index][2].z = normal.z
-
-        print(f"Generated terrain using {len(self.vertices)} vertices and {len(self.indices) // 3} triangles")
-
-    def render(self, view_matrix: mat4, projection_matrix: mat4):
         glBindVertexArray(self.vertex_array_id)
 
         glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_id)
@@ -171,22 +69,74 @@ class Terrain:
 
         error = glGetError()
         if error != GL_NO_ERROR:
-            print("Error!", gluErrorString(error))
+            print(f"Error! {gluErrorString(error)}")
+
+        glBindAttribLocation(self.handle, 0, bytes("a_Position", "utf-8"))
+        glBindAttribLocation(self.handle, 1, bytes("a_Color", "utf-8"))
+        glBindAttribLocation(self.handle, 2, bytes("a_Normal", "utf-8"))
+
+        self.uniform_matrixf("u_Model", model_matrix)
+        self.uniform_matrixf("u_View", view_matrix)
+        self.uniform_matrixf("u_Projection", projection_matrix)
+
+        self.uniformf("u_LightPosition", self.terrain.light_position.x, self.terrain.light_position.y,
+                      self.terrain.light_position.z)
+        self.uniformf("u_LightDirection", 0.0, -1.0, 0.0)
+
+    def unbind(self):
+        glBindVertexArray(0)
+        super().unbind()
+
+
+class Terrain:
+    def __init__(self, width: int = 100, height: int = 100):
+        self.width = width
+        self.height = height
+        self.position = vec3()
+        self.rotation = vec3()
+        self.color = vec3(255, 255, 255)
+        self.step = 10
+        self.octaves = 6
+        self.persistence = 0.5
+        self.lacunarity = 2.0
+        self.light_position = vec3(50, -10, 50)
+
+        self.data_updated = Value("b", False)
+        num_vertices = int((self.width / self.step) * (self.height / self.step) * 3)
+        self.vertices = Array("f", num_vertices)
+        self.colors = Array("f", num_vertices)
+        self.normals = Array("f", num_vertices)
+        num_indices = int((self.width / self.step - 1) * (self.height / self.step - 1) * 2 * 3)
+        self.indices = Array("i", num_indices)
+        print(f"Number of vertices: {num_vertices}, Number of indices: {num_indices}")
+
+        self.shader = TerrainShader(self)
+        self.regenerate_terrain()
+
+    def regenerate_terrain(self):
+        def func(*args):
+            with timer():
+                generate_vertices_and_indices(*args)
+
+        args = (
+            self.width, self.height, self.step, self.octaves, self.persistence, self.lacunarity, self.vertices,
+            self.colors, self.normals, self.indices, self.data_updated
+        )
+        thread = Process(target=func, args=args)
+        thread.start()
+
+    def render(self, view_matrix: mat4, projection_matrix: mat4):
+        if self.data_updated.value:
+            self.shader.upload_data(self.vertices, self.colors, self.normals, self.indices)
+            self.data_updated.value = False
 
         model_matrix = identity()
         translate(model_matrix, self.position)
         rotate(model_matrix, self.rotation)
 
-        self.shader.bind()
-        self.shader.uniform_matrixf("u_Model", model_matrix)
-        self.shader.uniform_matrixf("u_View", view_matrix)
-        self.shader.uniform_matrixf("u_Projection", projection_matrix)
-
-        self.shader.uniformf("u_LightPosition", self.light_position.x, self.light_position.y, self.light_position.z)
-        self.shader.uniformf("u_LightDirection", 0.0, -1.0, 0.0)
+        self.shader.bind(model_matrix, view_matrix, projection_matrix)
 
         glDrawElements(GL_TRIANGLES, len(self.indices), GL_UNSIGNED_INT, None)
-        glBindVertexArray(0)
 
         self.shader.unbind()
 
@@ -212,3 +162,97 @@ class Terrain:
                 print(f"Octaves: {self.octaves}")
                 print(f"Lacunarity: {self.lacunarity}")
                 self.regenerate_terrain()
+
+
+def generate_vertices_and_indices(width, height, step, octaves, persistence, lacunarity, vertices: Array, colors: Array,
+                                  normals: Array, indices: Array, data_updated: Value):
+    print("Generating terrain...")
+    scale = 100.0
+    normal_aggregation = []
+    for row in range(0, height, step):
+        for col in range(0, width, step):
+            y = noise.pnoise2(col / scale,
+                              row / scale,
+                              octaves=octaves,
+                              persistence=persistence,
+                              lacunarity=lacunarity,
+                              repeatx=width,
+                              repeaty=height,
+                              base=0)
+            y *= 75
+            y -= 30
+            position = vec3(col, y, row)
+            color = vec3(1, 1, 1)
+            index = int(row / step * (width / step * 3) + col / step * 3)
+            vertices[index + 0] = position.x
+            vertices[index + 1] = position.y
+            vertices[index + 2] = position.z
+            colors[index + 0] = color.x
+            colors[index + 1] = color.y
+            colors[index + 2] = color.z
+            normal_aggregation.append([])
+
+    current_index = 0
+    for row in range(height // step - 1):
+        for col in range(width // step - 1):
+            print(current_index, row, col)
+            # top left
+            index_v1 = row * width // step + col
+            indices[current_index] = index_v1
+            current_index += 1
+            print(current_index)
+            v1 = vec3(vertices[index_v1], vertices[index_v1 + 1], vertices[index_v1 + 2])
+
+            index_v2 = (row + 1) * width // step + col
+            indices[current_index] = index_v2
+            current_index += 1
+            print(current_index)
+            v2 = vec3(vertices[index_v2], vertices[index_v2 + 1], vertices[index_v2 + 2])
+
+            index_v3 = row * width // step + col + 1
+            indices[current_index] = index_v3
+            current_index += 1
+            print(current_index)
+            v3 = vec3(vertices[index_v3], vertices[index_v3 + 1], vertices[index_v3 + 2])
+
+            normal = v1.calculate_normal(v2, v3)
+            normal_aggregation[index_v1].append(normal)
+            normal_aggregation[index_v2].append(normal)
+            normal_aggregation[index_v3].append(normal)
+
+            # bottom right
+            index_v1 = row * width // step + col + 1
+            indices[current_index] = index_v1
+            current_index += 1
+            print(current_index)
+            v1 = vec3(vertices[index_v1], vertices[index_v1 + 1], vertices[index_v1 + 2])
+
+            index_v2 = (row + 1) * width // step + col
+            indices[current_index] = index_v2
+            current_index += 1
+            print(current_index)
+            v2 = vec3(vertices[index_v2], vertices[index_v2 + 1], vertices[index_v2 + 2])
+
+            index_v3 = (row + 1) * width // step + col + 1
+            indices[current_index] = index_v3
+            current_index += 1
+            print(current_index)
+            v3 = vec3(vertices[index_v3], vertices[index_v3 + 1], vertices[index_v3 + 2])
+
+            normal = v1.calculate_normal(v2, v3)
+            normal_aggregation[index_v1].append(normal)
+            normal_aggregation[index_v2].append(normal)
+            normal_aggregation[index_v3].append(normal)
+
+    current_index = 0
+    for i in range(len(normal_aggregation)):
+        normal = sum(normal_aggregation[i], vec3()).normalize()
+        if normal.y < 0:
+            normal *= -1
+        normals[current_index + 0] = normal.x
+        normals[current_index + 1] = normal.y
+        normals[current_index + 2] = normal.z
+        current_index += 3
+
+    print(f"Generated terrain using {len(vertices)} vertices and {len(indices) // 3} triangles")
+    data_updated.value = True
