@@ -50,8 +50,6 @@ class ModelShader(Shader):
         index_buffer_size = sizeof(index_data_gl)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, GL_STATIC_DRAW)
 
-        print(f"Uploaded {vertex_buffer_size} bytes of vertices and {index_buffer_size} bytes of indices")
-
     def bind(self, model_matrix, view_matrix, projection_matrix, light_position, light_direction):
         super().bind()
 

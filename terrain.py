@@ -16,7 +16,7 @@ class Terrain:
         self.step = 10
         self.octaves = 6
         self.persistence = 0.5
-        self.lacunarity = 2.0
+        self.lacunarity = 0  # 2.0
 
         self.data_updated = Value("b", False)
         num_vertices = int((self.width / self.step) * (self.height / self.step) * 3)
@@ -25,28 +25,31 @@ class Terrain:
         self.normals = Array("f", num_vertices, lock=False)
         num_indices = int((self.width / self.step - 1) * (self.height / self.step - 1) * 2 * 3)
         self.indices = Array("i", num_indices, lock=False)
-        print(f"Number of vertices: {num_vertices}, Number of indices: {num_indices}")
 
         self.model = Model()
 
         self.regenerate_terrain()
 
     def regenerate_terrain(self):
-        def func(*args):
-            with timer():
-                generate_vertices_and_indices(*args)
+        # def func(*args):
+        #     with timer():
+        #         generate_vertices_and_indices(*args)
 
         arguments = (
             self.width, self.height, self.step, self.octaves, self.persistence, self.lacunarity, self.vertices,
             self.colors, self.normals, self.indices, self.data_updated
         )
-        thread = Process(target=func, args=arguments)
+        thread = Process(target=generate_vertices_and_indices, args=arguments)
         thread.start()
 
     def render(self, render_data: RenderData):
         if self.data_updated.value:
             self.model.shader.upload_data(self.vertices, self.colors, self.normals, self.indices)
             self.data_updated.value = False
+            self.lacunarity += 10 * render_data.frame_time
+            if self.lacunarity > 5:
+                self.lacunarity = 0
+            self.regenerate_terrain()
 
         self.model.render(render_data)
 
@@ -76,7 +79,7 @@ class Terrain:
 
 def generate_vertices_and_indices(width, height, step, octaves, persistence, lacunarity, vertices: Array, colors: Array,
                                   normals: Array, indices: Array, data_updated: Value):
-    print("Generating terrain...")
+    # print("Generating terrain...")
     scale = 100.0
     normal_aggregation = []
     for row in range(0, height, step):
@@ -162,5 +165,5 @@ def generate_vertices_and_indices(width, height, step, octaves, persistence, lac
             normals[index_v3 * 3 + 1] += normal.y
             normals[index_v3 * 3 + 2] += normal.z
 
-    print(f"Generated terrain using {len(vertices)} vertices and {len(indices) // 3} triangles")
+    # print(f"Generated terrain using {len(vertices) // 3} vertices and {len(indices) // 3} triangles")
     data_updated.value = True

@@ -38,7 +38,7 @@ class Window(pyglet.window.Window):
         diff = end - self.start_time
         average = diff.total_seconds() * 1000.0 / self.num_frames
         average_string = '%.5f' % average
-        self.set_caption("Tower Defense " + str(average_string))
+        self.set_caption("Run'n'Jump " + str(average_string))
 
         if diff.total_seconds() > 1:
             self.start_time = end
@@ -92,7 +92,7 @@ class Window(pyglet.window.Window):
 
 if __name__ == '__main__':
     window = Window(width=1280, height=720, resizable=True)
-    window.set_caption("Tower Defense")
+    window.set_caption("Run'n'Jump")
 
     pyglet.clock.schedule_interval(window.on_draw, 1 / 120.0)
     pyglet.clock.set_fps_limit(120)
