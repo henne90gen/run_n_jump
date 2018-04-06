@@ -9,8 +9,9 @@ from terrain import Terrain
 class Game:
     def __init__(self):
         self.view_matrix = mat4()
-        camera_position = vec3(-10, 0, -20)
-        self.cameras = [Camera(camera_position)]
+        camera_position = vec3(-20, 0, -25)
+        camera_angle = vec2(18, 128)
+        self.cameras = [Camera(camera_position, camera_angle)]
         self.camera_index = 0
         position = vec3()
         size = 10
@@ -45,6 +46,8 @@ class Game:
                 cube.render(self.current_camera.view_matrix, projection_matrix)
 
             self.terrain.render(self.current_camera.view_matrix, projection_matrix)
+
+            Cube(1, self.terrain.light_position).render(self.current_camera.view_matrix, projection_matrix)
 
             for camera in self.cameras:
                 camera.render(self.current_camera.view_matrix, projection_matrix)

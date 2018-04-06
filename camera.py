@@ -5,11 +5,12 @@ from math_helper import vec3, vec2, identity, rotate, translate, mat4
 
 
 class Camera:
-    def __init__(self, pos: vec3 = vec3()):
+    def __init__(self, pos: vec3 = vec3(), angle: vec2 = vec2()):
         self.view_matrix = identity()
         self.position = pos
+        self.view_angle = angle
         self.direction = vec2(0, 1)
-        self.view_angle = vec2()
+        self.direction.rotate(angle.y)
         self.key_map = {}
         self.mouse_movement = vec2()
         self.sensitivity = 0.5

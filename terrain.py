@@ -3,9 +3,7 @@ from ctypes import sizeof, c_float
 import noise
 from pyglet.gl import *
 
-import math_helper
-from graphics import rotate, translate, identity, shader
-from math_helper import vec3, timer, mat4
+from math_helper import vec3, timer, mat4, translate, rotate, identity
 from shader import Shader
 
 
@@ -33,6 +31,7 @@ class Terrain:
         self.octaves = 6
         self.persistence = 0.5
         self.lacunarity = 2.0
+        self.light_position = vec3(50, -10, 50)
 
         self.vertex_array_id = GLuint()
         glGenVertexArrays(1, self.vertex_array_id)
@@ -101,7 +100,7 @@ class Terrain:
                 y -= 30
                 position = vec3(col, y, row)
                 # color = vec3(random.random(), random.random(), random.random())
-                color = vec3(c, c, c)
+                color = vec3(1, 1, 1)
                 vertex = (position, color, vec3(1.0))
                 self.vertices.append(vertex)
                 normals.append([])
@@ -174,16 +173,16 @@ class Terrain:
         if error != GL_NO_ERROR:
             print("Error!", gluErrorString(error))
 
-        model_matrix = math_helper.identity()
-        math_helper.translate(model_matrix, self.position)
-        math_helper.rotate(model_matrix, self.rotation)
+        model_matrix = identity()
+        translate(model_matrix, self.position)
+        rotate(model_matrix, self.rotation)
 
         self.shader.bind()
         self.shader.uniform_matrixf("u_Model", model_matrix)
         self.shader.uniform_matrixf("u_View", view_matrix)
         self.shader.uniform_matrixf("u_Projection", projection_matrix)
 
-        self.shader.uniformf("u_LightPosition", 20.0, 20.0, 20.0)
+        self.shader.uniformf("u_LightPosition", self.light_position.x, self.light_position.y, self.light_position.z)
         self.shader.uniformf("u_LightDirection", 0.0, -1.0, 0.0)
 
         glDrawElements(GL_TRIANGLES, len(self.indices), GL_UNSIGNED_INT, None)
