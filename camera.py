@@ -2,6 +2,7 @@ from pyglet.gl import *
 
 from cube import Cube
 from math_helper import vec3, vec2, identity, rotate, translate, mat4
+from render_data import RenderData
 
 
 class Camera:
@@ -56,7 +57,7 @@ class Camera:
         # This is required for 'with camera.update():' to work
         return self
 
-    def render(self, view_matrix: mat4, projection_matrix: mat4):
+    def render(self, render_data: RenderData):
         if self.active:
             return
 
@@ -65,7 +66,7 @@ class Camera:
         self.model.position = self.position.copy()
         self.model.position.x *= -1
         self.model.position.z *= -1
-        self.model.render(view_matrix, projection_matrix)
+        self.model.render(render_data)
 
     def __enter__(self):
         self.view_matrix = identity()

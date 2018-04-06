@@ -7,6 +7,7 @@ from pyglet.gl import *
 import game
 import hot_reload
 from math_helper import identity, mat4
+from render_data import RenderData
 
 MODULE_WHITELIST = ['game']
 
@@ -43,10 +44,8 @@ class Window(pyglet.window.Window):
             self.start_time = end
             self.num_frames = 0
 
-    def on_draw(*args):
-        # Hack required for pyglets 'schedule_interval' to work
-        self = args[0]
-
+    # noinspection PyMethodOverriding
+    def on_draw(self, *args):
         end = datetime.now()
         frame_time = (end - self.frame_start_time).total_seconds()
         self.frame_start_time = datetime.now()
@@ -54,7 +53,12 @@ class Window(pyglet.window.Window):
         hot_reload.reload_all(MODULE_WHITELIST)
 
         self.clear()
-        self.game.tick(self.projection_matrix, frame_time)
+
+        render_data = RenderData()
+        render_data.frame_time = frame_time
+        render_data.projection_matrix = self.projection_matrix
+        self.game.tick(render_data)
+
         self.show_average_time()
 
     def on_resize(self, width, height):

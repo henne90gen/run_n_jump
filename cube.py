@@ -3,7 +3,8 @@ from ctypes import c_float
 import pyglet
 from pyglet.gl import *
 
-from math_helper import vec3, mat4, identity, rotate, translate
+from math_helper import vec3, identity, rotate, translate
+from render_data import RenderData
 
 
 class Cube:
@@ -13,7 +14,7 @@ class Cube:
         self.size = vec3(size, size, size)
         self.color = color
 
-    def render(self, view_matrix: mat4, projection_matrix: mat4):
+    def render(self, render_data: RenderData):
         s = self.size * (1 / 2)
         batch = pyglet.graphics.Batch()
 
@@ -72,7 +73,7 @@ class Cube:
         glMatrixMode(GL_PROJECTION)
         glPushMatrix()
         # noinspection PyCallingNonCallable, PyTypeChecker
-        mat = (c_float * 16)(*projection_matrix.to_list())
+        mat = (c_float * 16)(*render_data.projection_matrix.to_list())
         glLoadTransposeMatrixf(mat)
 
         glMatrixMode(GL_MODELVIEW)
@@ -80,7 +81,7 @@ class Cube:
         model_matrix = identity()
         translate(model_matrix, self.position)
         rotate(model_matrix, self.rotation)
-        model_view_matrix = view_matrix * model_matrix
+        model_view_matrix = render_data.view_matrix * model_matrix
 
         # noinspection PyCallingNonCallable, PyTypeChecker
         mat = (c_float * 16)(*model_view_matrix.to_list())
