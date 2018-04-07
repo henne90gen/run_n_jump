@@ -2,7 +2,7 @@ from ctypes import c_float, sizeof
 
 from pyglet.gl import *
 
-from math_helper import vec3, identity, translate, rotate
+from math_helper import vec3, identity, scale, translate, rotate
 from render_data import RenderData
 from shader import Shader
 
@@ -91,9 +91,11 @@ class Model:
         self.shader = ModelShader(self, path_prefix)
         self.position = vec3()
         self.rotation = vec3()
+        self.scale = 1.0
 
     def render(self, render_data: RenderData):
         model_matrix = identity()
+        scale(model_matrix, self.scale)
         translate(model_matrix, self.position)
         rotate(model_matrix, self.rotation)
 

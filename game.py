@@ -32,7 +32,8 @@ class Game:
         ]
 
         self.terrain = Terrain()
-        self.model = load_model("cube.obj")
+        self.model = load_model("model.obj")
+        self.model.scale = 10.0
 
     @property
     def current_camera(self):

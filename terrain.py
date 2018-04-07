@@ -15,7 +15,7 @@ class Terrain:
         self.color = vec3(255, 255, 255)
         self.step = 10
         self.octaves = 6
-        self.persistence = 0.5
+        self.persistence = 1  # 0.5
         self.lacunarity = 0  # 2.0
 
         self.data_updated = Value("b", False)
@@ -46,12 +46,18 @@ class Terrain:
         if self.data_updated.value:
             self.model.shader.upload_data(self.vertices, self.colors, self.normals, self.indices)
             self.data_updated.value = False
+
             self.lacunarity += 10 * render_data.frame_time
             if self.lacunarity > 5:
                 self.lacunarity = 0
+
+            self.persistence -= 2 * render_data.frame_time
+            if self.persistence < 0:
+                self.persistence = 1
             self.regenerate_terrain()
 
         self.model.render(render_data)
+        print(f"lacunarity={self.lacunarity}, persistence={self.persistence}, octaves={self.octaves}")
 
     def handle_key(self, symbol, pressed):
         if not pressed:
