@@ -57,7 +57,7 @@ class Terrain:
             self.regenerate_terrain()
 
         self.model.render(render_data)
-        print(f"lacunarity={self.lacunarity}, persistence={self.persistence}, octaves={self.octaves}")
+        # print(f"lacunarity={self.lacunarity}, persistence={self.persistence}, octaves={self.octaves}")
 
     def handle_key(self, symbol, pressed):
         if not pressed:

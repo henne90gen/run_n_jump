@@ -53,5 +53,4 @@ void main() {
         MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha, 5.0) / (distance*distance);
 
     gl_FragColor = vec4(color, 1);
-//    gl_FragColor = vec4(0, (v_Normal.y+1.0)/2.0, 0, 1);
 }

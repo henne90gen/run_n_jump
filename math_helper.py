@@ -227,13 +227,15 @@ def identity():
     ])
 
 
-def scale(m: mat4, s: float):
+def scale(m: mat4, s):
+    if type(s) in [float, int]:
+        s = vec3(s, s, s)
     m1 = mat4()
     m1.numbers = m.numbers
     m2 = mat4([
-        [s, 0, 0, 0],
-        [0, s, 0, 0],
-        [0, 0, s, 0],
+        [s.x, 0, 0, 0],
+        [0, s.y, 0, 0],
+        [0, 0, s.z, 0],
         [0, 0, 0, 1],
     ])
     res = m2 * m1

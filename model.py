@@ -50,7 +50,7 @@ class ModelShader(Shader):
         index_buffer_size = sizeof(index_data_gl)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, GL_STATIC_DRAW)
 
-    def bind(self, model_matrix, view_matrix, projection_matrix, light_position, light_direction):
+    def bind(self, render_data: RenderData):
         super().bind()
 
         glBindVertexArray(self.vertex_array_id)
@@ -66,20 +66,16 @@ class ModelShader(Shader):
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.index_buffer_id)
 
-        error = glGetError()
-        if error != GL_NO_ERROR:
-            print(f"Error! {gluErrorString(error)}")
-
         glBindAttribLocation(self.handle, 0, bytes("a_Position", "utf-8"))
         glBindAttribLocation(self.handle, 1, bytes("a_Color", "utf-8"))
         glBindAttribLocation(self.handle, 2, bytes("a_Normal", "utf-8"))
 
-        self.uniform_matrixf("u_Model", model_matrix)
-        self.uniform_matrixf("u_View", view_matrix)
-        self.uniform_matrixf("u_Projection", projection_matrix)
+        self.uniform_matrixf("u_Model", render_data.model_matrix)
+        self.uniform_matrixf("u_View", render_data.view_matrix)
+        self.uniform_matrixf("u_Projection", render_data.projection_matrix)
 
-        self.uniformf("u_LightPosition", *light_position)
-        self.uniformf("u_LightDirection", *light_direction)
+        self.uniformf("u_LightPosition", *render_data.light_position)
+        self.uniformf("u_LightDirection", *render_data.light_direction)
 
     def unbind(self):
         glBindVertexArray(0)
@@ -98,9 +94,9 @@ class Model:
         scale(model_matrix, self.scale)
         translate(model_matrix, self.position)
         rotate(model_matrix, self.rotation)
+        render_data.model_matrix = model_matrix
 
-        self.shader.bind(model_matrix, render_data.view_matrix, render_data.projection_matrix,
-                         render_data.light_position, render_data.light_direction)
+        self.shader.bind(render_data)
 
         glDrawElements(GL_TRIANGLES, self.shader.index_count, GL_UNSIGNED_INT, None)
 

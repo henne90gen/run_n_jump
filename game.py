@@ -6,6 +6,7 @@ from math_helper import vec2, vec3, mat4
 from model import load_model
 from render_data import RenderData
 from terrain import Terrain
+from text import Text2D
 
 
 class Game:
@@ -17,6 +18,7 @@ class Game:
         self.camera_index = 0
 
         self.light_position = vec3(50, -10, 50)
+        # self.light_position = vec3(0, 20, 0)
         self.light_direction = vec3(0, -1, 0)
 
         position = vec3()
@@ -33,7 +35,8 @@ class Game:
 
         self.terrain = Terrain()
         self.model = load_model("model.obj")
-        self.model.scale = 10.0
+        self.model.scale = 5.0
+        self.text = Text2D("Hello", vec2(100, 100))
 
     @property
     def current_camera(self):
@@ -66,6 +69,8 @@ class Game:
 
             for camera in self.cameras:
                 camera.render(render_data)
+
+            self.text.render(render_data)
 
     def handle_key_event(self, symbol, modifiers, pressed):
         released = not pressed
