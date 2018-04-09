@@ -68,7 +68,7 @@ class ModelShader(Shader):
         self.uniform_matrixf("u_View", render_data.view_matrix)
         self.uniform_matrixf("u_Projection", render_data.projection_matrix)
 
-        self.uniformf("u_Color", *vec3(1.0, 1.0, 1.0))
+        self.uniformf("u_Color", *self.model.color)
         self.uniformf("u_LightPosition", *render_data.light_position)
         self.uniformf("u_LightDirection", *render_data.light_direction)
 
@@ -83,6 +83,7 @@ class Model:
         self.position = vec3()
         self.rotation = vec3()
         self.scale = 1.0
+        self.color = vec3(1.0, 1.0, 1.0)
 
     def render(self, render_data: RenderData):
         model_matrix = identity()

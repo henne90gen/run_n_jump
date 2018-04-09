@@ -63,7 +63,7 @@ class Game:
 
             self.terrain.render(render_data)
 
-            # Cube(1, self.light_position).render(render_data)
+            Cube(1, self.light_position).render(render_data)
 
             self.model.render(render_data)
 
