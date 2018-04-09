@@ -1,9 +1,10 @@
+import math
 from multiprocessing import Process, Value, Array
 
 import noise
 from pyglet.gl import *
 
-from math_helper import vec3, timer
+from math_helper import vec3
 from model import Model
 from render_data import RenderData
 
@@ -18,10 +19,11 @@ class Terrain:
         self.persistence = 1  # 0.5
         self.lacunarity = 0  # 2.0
 
+        self.time = 0
+
         self.data_updated = Value("b", False)
         num_vertices = int((self.width / self.step) * (self.height / self.step) * 3)
         self.vertices = Array("f", num_vertices, lock=False)
-        self.colors = Array("f", num_vertices, lock=False)
         self.normals = Array("f", num_vertices, lock=False)
         num_indices = int((self.width / self.step - 1) * (self.height / self.step - 1) * 2 * 3)
         self.indices = Array("i", num_indices, lock=False)
@@ -35,29 +37,33 @@ class Terrain:
         #     with timer():
         #         generate_vertices_and_indices(*args)
 
+        # y_function = with_perlin_noise(self.width, self.height, 100.0, self.octaves, self.persistence, self.lacunarity)
+        y_function = with_sine(self.time)
         arguments = (
-            self.width, self.height, self.step, self.octaves, self.persistence, self.lacunarity, self.vertices,
-            self.colors, self.normals, self.indices, self.data_updated
+            self.width, self.height, self.step, y_function, self.vertices, self.normals, self.indices, self.data_updated
         )
-        thread = Process(target=generate_vertices_and_indices, args=arguments)
+        thread = Process(target=generate_vertices, args=arguments)
         thread.start()
 
     def render(self, render_data: RenderData):
         if self.data_updated.value:
-            self.model.shader.upload_data(self.vertices, self.colors, self.normals, self.indices)
+            self.model.shader.upload_data(self.vertices, self.normals, self.indices)
             self.data_updated.value = False
 
-            self.lacunarity += 10 * render_data.frame_time
-            if self.lacunarity > 5:
-                self.lacunarity = 0
-
-            self.persistence -= 2 * render_data.frame_time
-            if self.persistence < 0:
-                self.persistence = 1
+            # constantly regenerate the terrain
             self.regenerate_terrain()
 
+        self.lacunarity += 10 * render_data.frame_time
+        if self.lacunarity > 5:
+            self.lacunarity = 0
+
+        self.persistence -= 2 * render_data.frame_time
+        if self.persistence < 0:
+            self.persistence = 1
+
+        self.time += render_data.frame_time * 10
+
         self.model.render(render_data)
-        # print(f"lacunarity={self.lacunarity}, persistence={self.persistence}, octaves={self.octaves}")
 
     def handle_key(self, symbol, pressed):
         if not pressed:
@@ -83,37 +89,55 @@ class Terrain:
                 self.regenerate_terrain()
 
 
-def generate_vertices_and_indices(width, height, step, octaves, persistence, lacunarity, vertices: Array, colors: Array,
-                                  normals: Array, indices: Array, data_updated: Value):
+def with_perlin_noise(width, height, scale, octaves, persistence, lacunarity):
+    def func(x, y):
+        y = noise.pnoise2(x / scale,
+                          y / scale,
+                          octaves=octaves,
+                          persistence=persistence,
+                          lacunarity=lacunarity,
+                          repeatx=width,
+                          repeaty=height,
+                          base=0)
+        y *= 75
+        y -= 30
+        return y
+
+    return func
+
+
+def with_sine(time):
+    def func(x, y):
+        radians = math.radians((x + time) * 2)
+        y = math.sin(radians)
+        y *= 20
+        y -= 30
+        return y
+
+    return func
+
+
+def generate_vertices(width, height, step, y_function, vertices: Array, normals: Array, indices: Array,
+                      data_updated: Value):
     # print("Generating terrain...")
-    scale = 100.0
     normal_aggregation = []
     for row in range(0, height, step):
         for col in range(0, width, step):
-            y = noise.pnoise2(col / scale,
-                              row / scale,
-                              octaves=octaves,
-                              persistence=persistence,
-                              lacunarity=lacunarity,
-                              repeatx=width,
-                              repeaty=height,
-                              base=0)
-            y *= 75
-            y -= 30
+            y = y_function(col, row)
             position = vec3(col, y, row)
-            color = vec3(1, 1, 1)
             index = int(row / step * (width / step * 3) + col / step * 3)
+
             vertices[index + 0] = position.x
             vertices[index + 1] = position.y
             vertices[index + 2] = position.z
-            colors[index + 0] = color.x
-            colors[index + 1] = color.y
-            colors[index + 2] = color.z
+
             normals[index + 0] = 0
             normals[index + 1] = 0
             normals[index + 2] = 0
+
             normal_aggregation.append([])
 
+    # Calculate indices and normals
     current_index = 0
     for row in range(height // step - 1):
         for col in range(width // step - 1):

@@ -34,9 +34,9 @@ class Game:
         ]
 
         self.terrain = Terrain()
-        self.model = load_model("model.obj")
+        self.model = load_model("models/model.obj")
         self.model.scale = 5.0
-        self.text = Text2D("Hello", vec2(100, 100))
+        self.text = Text2D("Hello\n\tWorld", vec2(100, 100))
 
     @property
     def current_camera(self):

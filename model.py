@@ -8,7 +8,7 @@ from shader import Shader
 
 
 class ModelShader(Shader):
-    def __init__(self, model, path_prefix):
+    def __init__(self, model, path_prefix: str):
         super().__init__(f"{path_prefix}model_vertex.glsl", f"{path_prefix}model_fragment.glsl")
         self.model = model
 
@@ -23,7 +23,7 @@ class ModelShader(Shader):
         self.index_buffer_id = GLuint()
         glGenBuffers(1, self.index_buffer_id)
 
-    def upload_data(self, vertices: list, colors: list, normals: list, indices: list):
+    def upload_data(self, vertices: list, normals: list, indices: list):
         self.index_count = len(indices)
 
         vertex_data = []
@@ -31,9 +31,6 @@ class ModelShader(Shader):
             vertex_data.append(vertices[i])
             vertex_data.append(vertices[i + 1])
             vertex_data.append(vertices[i + 2])
-            vertex_data.append(colors[i])
-            vertex_data.append(colors[i + 1])
-            vertex_data.append(colors[i + 2])
             vertex_data.append(normals[i])
             vertex_data.append(normals[i + 1])
             vertex_data.append(normals[i + 2])
@@ -56,24 +53,22 @@ class ModelShader(Shader):
         glBindVertexArray(self.vertex_array_id)
 
         glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_id)
-        stride = 9 * sizeof(c_float)
+        stride = 6 * sizeof(c_float)
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, 0)
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, 3 * sizeof(c_float))
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, 6 * sizeof(c_float))
         glEnableVertexAttribArray(0)
         glEnableVertexAttribArray(1)
-        glEnableVertexAttribArray(2)
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.index_buffer_id)
 
         glBindAttribLocation(self.handle, 0, bytes("a_Position", "utf-8"))
-        glBindAttribLocation(self.handle, 1, bytes("a_Color", "utf-8"))
-        glBindAttribLocation(self.handle, 2, bytes("a_Normal", "utf-8"))
+        glBindAttribLocation(self.handle, 1, bytes("a_Normal", "utf-8"))
 
         self.uniform_matrixf("u_Model", render_data.model_matrix)
         self.uniform_matrixf("u_View", render_data.view_matrix)
         self.uniform_matrixf("u_Projection", render_data.projection_matrix)
 
+        self.uniformf("u_Color", *vec3(1.0, 1.0, 1.0))
         self.uniformf("u_LightPosition", *render_data.light_position)
         self.uniformf("u_LightDirection", *render_data.light_direction)
 
@@ -83,7 +78,7 @@ class ModelShader(Shader):
 
 
 class Model:
-    def __init__(self, path_prefix: str = ""):
+    def __init__(self, path_prefix: str = "shaders/"):
         self.shader = ModelShader(self, path_prefix)
         self.position = vec3()
         self.rotation = vec3()
@@ -103,7 +98,7 @@ class Model:
         self.shader.unbind()
 
 
-def load_model(path: str, shader_path_prefix: str = ""):
+def load_model(path: str, shader_path_prefix: str = "shaders/"):
     with open(path, "r") as f:
         lines = f.readlines()
 
@@ -144,9 +139,7 @@ def load_model(path: str, shader_path_prefix: str = ""):
 
     normals = [item for sublist in normals for item in sublist]
 
-    colors = [1.0 for _ in vertices]
-
     model = Model(shader_path_prefix)
-    model.shader.upload_data(vertices, colors, normals, indices)
+    model.shader.upload_data(vertices, normals, indices)
 
     return model

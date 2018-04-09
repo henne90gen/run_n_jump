@@ -53,7 +53,7 @@ def load_font(font_path: str = "font/RobotoMono-Regular.ttf", size: int = 48) ->
 
 
 class TextShader(Shader):
-    def __init__(self, text, path_prefix: str = ""):
+    def __init__(self, text, path_prefix: str = "shaders/"):
         super().__init__(f"{path_prefix}text_vertex.glsl", f"{path_prefix}text_fragment.glsl")
 
         self.text = text
@@ -153,6 +153,7 @@ def generate_vertices(text, font_texture: FontTexture):
         y = i // 16 - 2
         if c == '\n':
             current_position -= vec2(0, font_texture.character_height)
+            current_position.x = 0
         elif c == '\t':
             current_position += vec2(4 * font_texture.character_width)
         elif i >= 32:

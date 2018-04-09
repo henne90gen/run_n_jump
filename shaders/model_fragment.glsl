@@ -1,4 +1,3 @@
-varying vec4 v_Color;
 varying vec3 v_Normal;
 varying vec3 v_LightDirection;
 varying vec3 v_WorldPosition;
@@ -8,6 +7,7 @@ uniform mat4 u_Model;
 uniform mat4 u_View;
 uniform mat4 u_Projection;
 uniform vec3 u_LightPosition;
+uniform vec3 u_Color;
 
 void main() {
     // Light emission properties
@@ -16,7 +16,7 @@ void main() {
 	float LightPower = 300.0;
 
 	// Material properties
-	vec3 MaterialDiffuseColor = v_Color.rgb;
+	vec3 MaterialDiffuseColor = u_Color.rgb;
 	vec3 MaterialAmbientColor = vec3(0.1, 0.1, 0.1) * MaterialDiffuseColor;
 	vec3 MaterialSpecularColor = vec3(0.3, 0.3, 0.3);
 
