@@ -13,7 +13,7 @@ class Terrain:
     def __init__(self, width: int = 200, height: int = 200):
         self.width = width
         self.height = height
-        self.color = vec3(255, 255, 255)
+        self.color = vec3(1.0, 1.0, 1.0)
         self.step = 10
         self.octaves = 6
         self.persistence = 1  # 0.5
@@ -47,7 +47,7 @@ class Terrain:
 
     def render(self, render_data: RenderData):
         if self.data_updated.value:
-            self.model.shader.upload_data(self.vertices, self.normals, self.indices)
+            self.model.shader.upload_data(self.vertices, self.normals, self.indices, self.color)
             self.data_updated.value = False
 
             # constantly regenerate the terrain

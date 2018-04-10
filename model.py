@@ -8,9 +8,9 @@ from shader import Shader
 
 
 class ModelShader(Shader):
-    def __init__(self, model, path_prefix: str):
+    def __init__(self, path_prefix: str):
         super().__init__(f"{path_prefix}model_vertex.glsl", f"{path_prefix}model_fragment.glsl")
-        self.model = model
+        self.color = vec3()
 
         self.index_count = 0
 
@@ -23,8 +23,9 @@ class ModelShader(Shader):
         self.index_buffer_id = GLuint()
         glGenBuffers(1, self.index_buffer_id)
 
-    def upload_data(self, vertices: list, normals: list, indices: list):
+    def upload_data(self, vertices: list, normals: list, indices: list, color: vec3):
         self.index_count = len(indices)
+        self.color = color
 
         vertex_data = []
         for i in range(0, len(vertices), 3):
@@ -68,7 +69,7 @@ class ModelShader(Shader):
         self.uniform_matrixf("u_View", render_data.view_matrix)
         self.uniform_matrixf("u_Projection", render_data.projection_matrix)
 
-        self.uniformf("u_Color", *self.model.color)
+        self.uniformf("u_Color", *self.color)
         self.uniformf("u_LightPosition", *render_data.light_position)
         self.uniformf("u_LightDirection", *render_data.light_direction)
 
@@ -79,11 +80,10 @@ class ModelShader(Shader):
 
 class Model:
     def __init__(self, path_prefix: str = "shaders/"):
-        self.shader = ModelShader(self, path_prefix)
+        self.shader = ModelShader(path_prefix)
         self.position = vec3()
         self.rotation = vec3()
         self.scale = 1.0
-        self.color = vec3(1.0, 1.0, 1.0)
 
     def render(self, render_data: RenderData):
         model_matrix = identity()
@@ -141,6 +141,6 @@ def load_model(path: str, shader_path_prefix: str = "shaders/"):
     normals = [item for sublist in normals for item in sublist]
 
     model = Model(shader_path_prefix)
-    model.shader.upload_data(vertices, normals, indices)
+    model.shader.upload_data(vertices, normals, indices, vec3(1.0, 1.0, 1.0))
 
     return model

@@ -13,7 +13,7 @@ void main() {
     // Light emission properties
 	// You probably want to put them as uniforms
 	vec3 LightColor = vec3(1, 1, 1);
-	float LightPower = 300.0;
+	float LightPower = 100.0;
 
 	// Material properties
 	vec3 MaterialDiffuseColor = u_Color.rgb;
@@ -48,9 +48,9 @@ void main() {
 		// Ambient : simulates indirect lighting
         MaterialAmbientColor +
 		// Diffuse : "color" of the object
-		MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance * distance);
+		MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance * distance) +
 		// Specular : reflective highlight, like a mirror
         MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha, 5.0) / (distance*distance);
 
-    gl_FragColor = vec4(color, 1);
+    gl_FragColor = vec4(color, 1.0);
 }

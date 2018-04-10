@@ -19,8 +19,8 @@ class Window(pyglet.window.Window):
         self.set_exclusive_mouse(True)
 
         glEnable(GL_DEPTH_TEST)
-        glEnable(pyglet.gl.GL_BLEND)
-        glBlendFunc(pyglet.gl.GL_SRC_ALPHA, pyglet.gl.GL_ONE_MINUS_SRC_ALPHA)
+        glEnable(GL_BLEND)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
         glClearColor(0, 0, 0, 1)
 
         # glEnable(GL_CULL_FACE)

@@ -2,6 +2,7 @@ import pyglet
 
 from camera import Camera
 from cube import Cube
+from labyrinth import Labyrinth
 from math_helper import vec2, vec3, mat4
 from model import load_model
 from render_data import RenderData
@@ -12,12 +13,12 @@ from text import Text2D
 class Game:
     def __init__(self):
         self.view_matrix = mat4()
-        camera_position = vec3(-20, 0, -25)
-        camera_angle = vec2(18, 128)
+        camera_position = vec3(-10, 0, -10)
+        camera_angle = vec2(0, 120)
         self.cameras = [Camera(camera_position, camera_angle)]
         self.camera_index = 0
 
-        self.light_position = vec3(50, -10, 50)
+        self.light_position = vec3(50, 0, 50)
         # self.light_position = vec3(0, 20, 0)
         self.light_direction = vec3(0, -1, 0)
 
@@ -36,7 +37,9 @@ class Game:
         self.terrain = Terrain()
         self.model = load_model("models/model.obj")
         self.model.scale = 5.0
-        self.text = Text2D("Hello\n\tWorld", vec2(100, 100))
+        self.text = Text2D("Hello\n\tWorld", vec2(100, 100), vec3(1.0), font_size=48)
+
+        self.labyrinth = Labyrinth()
 
     @property
     def current_camera(self):
@@ -55,20 +58,22 @@ class Game:
         with self.current_camera.update(render_data.frame_time):
 
             render_data.view_matrix = self.current_camera.view_matrix
-            render_data.light_position = self.light_position
+            render_data.light_position = self.current_camera.position * -1
             render_data.light_direction = self.light_direction
 
             for cube in self.cubes:
                 cube.render(render_data)
 
-            self.terrain.render(render_data)
+            # self.terrain.render(render_data)
 
             Cube(1, self.light_position).render(render_data)
 
-            self.model.render(render_data)
+            # self.model.render(render_data)
 
             for camera in self.cameras:
                 camera.render(render_data)
+
+            self.labyrinth.render(render_data)
 
             self.text.render(render_data)
 
