@@ -54,8 +54,9 @@ class Camera:
             self.view_angle.x -= self.mouse_movement.y * scale_factor
             self.mouse_movement = vec2()
 
-        # This is required for 'with camera.update():' to work
-        return self
+        self.view_matrix = identity()
+        translate(self.view_matrix, self.position)
+        rotate(self.view_matrix, vec3(self.view_angle.x, self.view_angle.y, 0))
 
     def render(self, render_data: RenderData):
         if self.active:
@@ -67,14 +68,6 @@ class Camera:
         self.model.position.x *= -1
         self.model.position.z *= -1
         self.model.render(render_data)
-
-    def __enter__(self):
-        self.view_matrix = identity()
-        translate(self.view_matrix, self.position)
-        rotate(self.view_matrix, vec3(self.view_angle.x, self.view_angle.y, 0))
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
 
     def handle_key(self, symbol, pressed):
         if pressed:
