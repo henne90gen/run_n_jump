@@ -1,8 +1,6 @@
 from pyglet.gl import *
 
-from cube import Cube
-from math_helper import vec3, vec2, identity, rotate, translate, mat4
-from render_data import RenderData
+from math_helper import vec3, vec2, identity, rotate, translate
 
 
 class Camera:
@@ -15,11 +13,6 @@ class Camera:
         self.key_map = {}
         self.mouse_movement = vec2()
         self.sensitivity = 0.5
-        self.active = True
-        self.model = Cube()
-
-    def set_active(self, active):
-        self.active = active
 
     def update(self, frame_time: float):
         for symbol in self.key_map:
@@ -58,35 +51,20 @@ class Camera:
         translate(self.view_matrix, self.position)
         rotate(self.view_matrix, vec3(self.view_angle.x, self.view_angle.y, 0))
 
-    def render(self, render_data: RenderData):
-        if self.active:
-            return
+    def input(self, input_map: dict, mouse_movement: vec2):
+        self.key_map = input_map
 
-        # FIXME this is somehow broken
-        self.model.rotation = vec3(0, -self.view_angle.y, 0)
-        self.model.position = self.position.copy()
-        self.model.position.x *= -1
-        self.model.position.z *= -1
-        self.model.render(render_data)
-
-    def handle_key(self, symbol, pressed):
-        if pressed:
-            self.key_map[symbol] = True
-        else:
-            self.key_map[symbol] = False
-
-    def handle_mouse(self, movement: vec2):
-        if movement.x > 0:
+        if mouse_movement.x > 0:
             self.mouse_movement.x = 1
-        elif movement.x < 0:
+        elif mouse_movement.x < 0:
             self.mouse_movement.x = -1
         else:
             self.mouse_movement.x = 0
 
-        if movement.y > 0:
+        if mouse_movement.y > 0:
             self.mouse_movement.y = 1
-        elif movement.y < 0:
+        elif mouse_movement.y < 0:
             self.mouse_movement.y = -1
         else:
             self.mouse_movement.y = 0
-        self.mouse_movement = movement
+        self.mouse_movement = mouse_movement

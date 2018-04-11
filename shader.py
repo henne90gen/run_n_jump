@@ -6,7 +6,7 @@ from ctypes import (
 
 from pyglet.gl import *
 
-from math_helper import mat4
+from math_helper import mat4, vec3, vec2
 
 
 class Shader:
@@ -93,6 +93,17 @@ class Shader:
         # unbind whatever program is currently bound - not necessarily this program,
         # so this should probably be a class method instead
         glUseProgram(0)
+
+    def uniform(self, name: str, data):
+        data_type = type(data)
+        if data_type == mat4:
+            self.uniform_matrixf(name, data)
+        elif data_type in [vec2, vec3]:
+            self.uniformf(name, *data)
+        elif data_type == float:
+            self.uniformf(name, data)
+        elif data_type == int:
+            self.uniformi(name, data)
 
     def uniformf(self, name: str, *vals):
         # upload a floating point uniform

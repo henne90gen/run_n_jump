@@ -1,23 +1,15 @@
-from ctypes import sizeof
+from ctypes import sizeof, c_float
 
 import freetype
 import numpy as np
 from pyglet.gl import *
 
-from math_helper import vec3, vec2
-from render_data import RenderData
+from math_helper import vec3, vec2, identity
+from model import ModelAsset, combine_attributes, upload, ModelInstance, Texture, add_texture_uniform
 from shader import Shader
 
 
-class FontTexture:
-    texture_width = 0.0
-    texture_height = 0.0
-    character_width = 0.0
-    character_height = 0.0
-    texture_buffer = None
-
-
-def load_font(font_path: str = "font/RobotoMono-Regular.ttf", size: int = 48) -> FontTexture:
+def load_font(font_path: str = "font/RobotoMono-Regular.ttf", size: int = 48) -> Texture:
     # Load font
     face = freetype.Face(font_path)
     face.set_char_size(size * 64)
@@ -43,124 +35,41 @@ def load_font(font_path: str = "font/RobotoMono-Regular.ttf", size: int = 48) ->
 
             data[y:y + bitmap.rows, x:x + bitmap.width].flat = bitmap.buffer
 
-    result = FontTexture()
-    result.texture_buffer = data
-    result.texture_width = data.shape[1]
-    result.texture_height = data.shape[0]
-    result.character_width = char_width
-    result.character_height = char_height
+    result = Texture()
+    result.buffer = data
+    result.width = data.shape[1]
+    result.height = data.shape[0]
+    result.attributes["character_width"] = char_width
+    result.attributes["character_height"] = char_height
+    result.format = GL_ALPHA
+    result.type = GL_UNSIGNED_BYTE
     return result
 
 
-class TextShader(Shader):
-    def __init__(self, text, path_prefix: str = "shaders/"):
-        super().__init__(f"{path_prefix}text_vertex.glsl", f"{path_prefix}text_fragment.glsl")
-
-        self.text = text
-        self.vertex_count = 0
-
-        self.vertex_array_id = GLuint()
-        glGenVertexArrays(1, self.vertex_array_id)
-
-        self.vertex_buffer_id = GLuint()
-        glGenBuffers(1, self.vertex_buffer_id)
-
-        self.texture_id = GLuint()
-        glGenTextures(1, self.texture_id)
-
-    def upload_data(self, vertices: list, uvs: list, font_texture: FontTexture):
-        self.vertex_count = len(vertices) // 2
-        vertex_data = []
-        for i in range(0, len(vertices), 2):
-            vertex_data.append(vertices[i])
-            vertex_data.append(vertices[i + 1])
-            vertex_data.append(uvs[i])
-            vertex_data.append(uvs[i + 1])
-
-        # noinspection PyCallingNonCallable,PyTypeChecker
-        vertex_data_gl = (GLfloat * len(vertex_data))(*vertex_data)
-        glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_id)
-        vertex_buffer_size = sizeof(vertex_data_gl)
-        glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertex_data_gl, GL_STATIC_DRAW)
-
-        glBindTexture(GL_TEXTURE_2D, self.texture_id)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-
-        # noinspection PyCallingNonCallable,PyTypeChecker
-        texture_data = (GLubyte * len(font_texture.texture_buffer.flat))(*font_texture.texture_buffer.flatten())
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, font_texture.texture_width, font_texture.texture_height, 0, GL_ALPHA,
-                     GL_UNSIGNED_BYTE, texture_data)
-
-    def bind(self, render_data: RenderData):
-        super().bind()
-
-        glBindVertexArray(self.vertex_array_id)
-
-        glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_id)
-        stride = sizeof(GLfloat) * 4
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, stride, 0)
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, 2 * sizeof(GLfloat))
-        glEnableVertexAttribArray(0)
-        glEnableVertexAttribArray(1)
-
-        glBindAttribLocation(self.handle, 0, bytes("a_Position", "utf-8"))
-        glBindAttribLocation(self.handle, 1, bytes("a_UV", "utf-8"))
-
-        glActiveTexture(GL_TEXTURE0)
-        glBindTexture(GL_TEXTURE_2D, self.texture_id)
-        self.uniformi("u_TextureSampler", 0)
-
-        self.uniformf("u_Offset", *self.text.position)
-        self.uniformf("u_Color", *self.text.color)
-
-    def unbind(self):
-        glBindVertexArray(0)
-        super().unbind()
-
-
-class Text2D:
-    def __init__(self, text: str, position: vec2 = vec2(), color: vec3 = vec3(1.0, 1.0, 1.0), font_size: int = 11):
-        self.text = text
-        self.color = color
-        self.position = position
-        self.font_size = font_size
-
-        self.shader = TextShader(self)
-
-        font_texture = load_font(size=font_size)
-        vertices, uvs = generate_vertices(text, font_texture)
-        self.shader.upload_data(vertices, uvs, font_texture)
-
-    def render(self, render_data: RenderData):
-        self.shader.bind(render_data)
-
-        glDrawArrays(GL_TRIANGLES, 0, self.shader.vertex_count)
-
-        self.shader.unbind()
-
-
-def generate_vertices(text, font_texture: FontTexture):
+def generate_vertices(text, font_texture: Texture):
     vertices = []
     uvs = []
 
-    dx = font_texture.character_width / float(font_texture.texture_width)
-    dy = font_texture.character_height / float(font_texture.texture_height)
+    character_width = font_texture.attributes["character_width"]
+    character_height = font_texture.attributes["character_height"]
+
+    dx = character_width / float(font_texture.width)
+    dy = character_height / float(font_texture.height)
     current_position = vec2()
     for c in text:
         i = ord(c)
         x = i % 16
         y = i // 16 - 2
         if c == '\n':
-            current_position -= vec2(0, font_texture.character_height)
+            current_position -= vec2(0, character_height)
             current_position.x = 0
         elif c == '\t':
-            current_position += vec2(4 * font_texture.character_width)
+            current_position += vec2(4 * character_width)
         elif i >= 32:
             vertices.extend([current_position.x, current_position.y])
-            vertices.extend([current_position.x + font_texture.character_width, current_position.y])
+            vertices.extend([current_position.x + character_width, current_position.y])
             vertices.extend(
-                [current_position.x + font_texture.character_width, current_position.y + font_texture.character_height])
+                [current_position.x + character_width, current_position.y + character_height])
 
             uvs.extend([(x) * dx, (y + 1) * dy])
             uvs.extend([(x + 1) * dx, (y + 1) * dy])
@@ -168,16 +77,49 @@ def generate_vertices(text, font_texture: FontTexture):
 
             vertices.extend([current_position.x, current_position.y])
             vertices.extend(
-                [current_position.x + font_texture.character_width, current_position.y + font_texture.character_height])
-            vertices.extend([current_position.x, current_position.y + font_texture.character_height])
+                [current_position.x + character_width, current_position.y + character_height])
+            vertices.extend([current_position.x, current_position.y + character_height])
 
             uvs.extend([(x) * dx, (y + 1) * dy])
             uvs.extend([(x + 1) * dx, (y) * dy])
             uvs.extend([(x) * dx, (y) * dy])
 
-            current_position += vec2(font_texture.character_width)
+            current_position += vec2(character_width)
 
     return vertices, uvs
+
+
+def text2d(text: str, position: vec2 = vec2(), color: vec3 = vec3(1.0, 1.0, 1.0), font_size: int = 11):
+    asset = ModelAsset(False)
+    asset.shader = Shader("shaders/text_vertex.glsl", "shaders/text_fragment.glsl")
+    stride = 4 * sizeof(c_float)
+    attributes = [
+        (0, 'a_Position', GL_FLOAT, 2, stride, 0),
+        (1, 'a_UV', GL_FLOAT, 2, stride, 2 * sizeof(c_float))
+    ]
+    asset.attributes = attributes
+    asset.vertex_data = []
+
+    font_texture = load_font(size=font_size)
+    font_texture.texture_unit = GL_TEXTURE0
+    asset.texture = font_texture
+    vertices, uvs = generate_vertices(text, font_texture)
+    vertex_count = len(vertices) // 2
+    asset.vertex_data = combine_attributes(vertex_count, (2, vertices), (2, uvs))
+    asset.draw_count = vertex_count
+    upload(asset)
+
+    add_texture_uniform(asset.uniforms)
+
+    asset.uniforms["u_Offset"] = "position"
+    asset.uniforms["u_Color"] = "color"
+
+    model = ModelInstance()
+    model.model_matrix = identity()
+    model.asset = asset
+    model.color = color
+    model.position = position
+    return model
 
 
 def generate_vertices_for_whole_font():

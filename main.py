@@ -80,15 +80,15 @@ class Window(pyglet.window.Window):
         ])
 
     def on_key_press(self, symbol, modifiers):
-        self.game.handle_key_event(symbol, modifiers, True)
+        self.game.handle_key(symbol, modifiers, True)
 
     # noinspection PyMethodOverriding
     def on_key_release(self, symbol, modifiers):
-        self.game.handle_key_event(symbol, modifiers, False)
+        self.game.handle_key(symbol, modifiers, False)
 
     # noinspection PyMethodOverriding
     def on_mouse_motion(self, x, y, dx, dy):
-        self.game.handle_mouse_motion_event(dx, dy)
+        self.game.handle_mouse(dx, dy)
 
 
 if __name__ == '__main__':

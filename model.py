@@ -1,18 +1,52 @@
-from ctypes import c_float, sizeof
+from ctypes import sizeof
 
 from pyglet.gl import *
 
-from math_helper import vec3, identity, scale, translate, rotate
+from math_helper import identity, vec3
 from render_data import RenderData
-from shader import Shader
 
 
-class ModelShader(Shader):
-    def __init__(self, path_prefix: str):
-        super().__init__(f"{path_prefix}model_vertex.glsl", f"{path_prefix}model_fragment.glsl")
-        self.color = vec3()
+class Texture:
+    texture_unit = None
+    width = -1
+    height = -1
+    buffer = None
+    format = None
+    type = None
 
-        self.index_count = 0
+    attributes = None
+
+    def __init__(self):
+        self.id = GLuint()
+        glGenTextures(1, self.id)
+
+        self.attributes = {}
+
+
+class ModelAsset:
+    shader = None
+    texture = None
+    vertex_array_id = -1
+    vertex_buffer_id = -1
+    index_buffer_id = -1
+    draw_type = GL_TRIANGLES
+    draw_start = 0
+    draw_count = -1
+
+    vertex_data = None
+    indices = None
+
+    attributes = None
+    uniforms = None
+
+    def __init__(self, use_index_buffer: bool = True):
+        self.use_index_buffer = use_index_buffer
+
+        self.vertex_data = []
+        self.indices = []
+
+        self.attributes = []
+        self.uniforms = {}
 
         self.vertex_array_id = GLuint()
         glGenVertexArrays(1, self.vertex_array_id)
@@ -20,86 +54,111 @@ class ModelShader(Shader):
         self.vertex_buffer_id = GLuint()
         glGenBuffers(1, self.vertex_buffer_id)
 
-        self.index_buffer_id = GLuint()
-        glGenBuffers(1, self.index_buffer_id)
+        if self.use_index_buffer:
+            self.index_buffer_id = GLuint()
+            glGenBuffers(1, self.index_buffer_id)
 
-    def upload_data(self, vertices: list, normals: list, indices: list, color: vec3):
-        self.index_count = len(indices)
-        self.color = color
 
-        vertex_data = []
-        for i in range(0, len(vertices), 3):
-            vertex_data.append(vertices[i])
-            vertex_data.append(vertices[i + 1])
-            vertex_data.append(vertices[i + 2])
-            vertex_data.append(normals[i])
-            vertex_data.append(normals[i + 1])
-            vertex_data.append(normals[i + 2])
+class ModelInstance:
+    asset: ModelAsset = None
+    model_matrix = None
+    color = None
 
+    def __init__(self):
+        self.model_matrix = identity()
+        self.color = vec3(1.0, 1.0, 1.0)
+
+    def render(self, render_data: RenderData):
+        self.asset.shader.bind()
+
+        glBindVertexArray(self.asset.vertex_array_id)
+
+        glBindBuffer(GL_ARRAY_BUFFER, self.asset.vertex_buffer_id)
+        for position, name, gl_type, size, stride, offset in self.asset.attributes:
+            glVertexAttribPointer(position, size, gl_type, GL_FALSE, stride, offset)
+            glEnableVertexAttribArray(position)
+            glBindAttribLocation(self.asset.shader.handle, position, bytes(name, "utf-8"))
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.asset.index_buffer_id)
+
+        for uniform_name in self.asset.uniforms:
+            data_name = self.asset.uniforms[uniform_name]
+            print(data_name)
+            if type(data_name) != str:
+                # read data directly from uniforms
+                data = data_name
+                self.asset.shader.uniform(uniform_name, data)
+            elif hasattr(self, data_name):
+                print("model", getattr(self, data_name))
+                self.asset.shader.uniform(uniform_name, getattr(self, data_name))
+            elif hasattr(render_data, data_name):
+                print("render_data")
+                self.asset.shader.uniform(uniform_name, getattr(render_data, data_name))
+
+        if self.asset.texture is not None:
+            texture_id = self.asset.texture.id
+            texture_unit = self.asset.texture.texture_unit
+            glActiveTexture(texture_unit)
+            glBindTexture(GL_TEXTURE_2D, texture_id)
+
+        if self.asset.use_index_buffer:
+            glDrawElements(self.asset.draw_type, self.asset.draw_count, GL_UNSIGNED_INT, None)
+        else:
+            glDrawArrays(self.asset.draw_type, self.asset.draw_start, self.asset.draw_count)
+
+        self.asset.shader.unbind()
+
+
+def add_mvp_uniforms(uniforms):
+    uniforms['u_Model'] = "model_matrix"
+    uniforms['u_View'] = "view_matrix"
+    uniforms['u_Projection'] = "projection_matrix"
+
+
+def add_light_uniforms(uniforms):
+    uniforms['u_LightPosition'] = "light_position"
+    uniforms['u_LightDirection'] = "light_direction"
+
+
+def add_texture_uniform(uniforms):
+    uniforms['u_TextureSampler'] = 0
+
+
+def combine_attributes(vertex_count, *attributes):
+    vertex_data = []
+    for i in range(vertex_count):
+        for size, attribute_array in attributes:
+            for j in range(size):
+                vertex_data.append(attribute_array[i * size + j])
+    return vertex_data
+
+
+def upload(asset: ModelAsset):
+    # noinspection PyCallingNonCallable,PyTypeChecker
+    vertex_data_gl = (GLfloat * len(asset.vertex_data))(*asset.vertex_data)
+    glBindBuffer(GL_ARRAY_BUFFER, asset.vertex_buffer_id)
+    vertex_buffer_size = sizeof(vertex_data_gl)
+    glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertex_data_gl, GL_STATIC_DRAW)
+
+    if asset.use_index_buffer:
         # noinspection PyCallingNonCallable,PyTypeChecker
-        vertex_data_gl = (GLfloat * len(vertex_data))(*vertex_data)
-        glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_id)
-        vertex_buffer_size = sizeof(vertex_data_gl)
-        glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertex_data_gl, GL_STATIC_DRAW)
-
-        # noinspection PyCallingNonCallable,PyTypeChecker
-        index_data_gl = (GLint * len(indices))(*indices)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.index_buffer_id)
+        index_data_gl = (GLint * len(asset.indices))(*asset.indices)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset.index_buffer_id)
         index_buffer_size = sizeof(index_data_gl)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, GL_STATIC_DRAW)
 
-    def bind(self, render_data: RenderData):
-        super().bind()
+    if asset.texture is not None:
+        glBindTexture(GL_TEXTURE_2D, asset.texture.id)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
 
-        glBindVertexArray(self.vertex_array_id)
-
-        glBindBuffer(GL_ARRAY_BUFFER, self.vertex_buffer_id)
-        stride = 6 * sizeof(c_float)
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, 0)
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, 3 * sizeof(c_float))
-        glEnableVertexAttribArray(0)
-        glEnableVertexAttribArray(1)
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.index_buffer_id)
-
-        glBindAttribLocation(self.handle, 0, bytes("a_Position", "utf-8"))
-        glBindAttribLocation(self.handle, 1, bytes("a_Normal", "utf-8"))
-
-        self.uniform_matrixf("u_Model", render_data.model_matrix)
-        self.uniform_matrixf("u_View", render_data.view_matrix)
-        self.uniform_matrixf("u_Projection", render_data.projection_matrix)
-
-        self.uniformf("u_Color", *self.color)
-        self.uniformf("u_LightPosition", *render_data.light_position)
-        self.uniformf("u_LightDirection", *render_data.light_direction)
-
-    def unbind(self):
-        glBindVertexArray(0)
-        super().unbind()
+        # noinspection PyCallingNonCallable,PyTypeChecker
+        texture_data = (GLubyte * len(asset.texture.buffer.flat))(*asset.texture.buffer.flatten())
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, asset.texture.width, asset.texture.height, 0, asset.texture.format,
+                     asset.texture.type, texture_data)
 
 
-class Model:
-    def __init__(self, path_prefix: str = "shaders/"):
-        self.shader = ModelShader(path_prefix)
-        self.position = vec3()
-        self.rotation = vec3()
-        self.scale = 1.0
-
-    def render(self, render_data: RenderData):
-        model_matrix = identity()
-        scale(model_matrix, self.scale)
-        translate(model_matrix, self.position)
-        rotate(model_matrix, self.rotation)
-        render_data.model_matrix = model_matrix
-
-        self.shader.bind(render_data)
-
-        glDrawElements(GL_TRIANGLES, self.shader.index_count, GL_UNSIGNED_INT, None)
-
-        self.shader.unbind()
-
-
-def load_model(path: str, shader_path_prefix: str = "shaders/"):
+def load_blender_file(path):
     with open(path, "r") as f:
         lines = f.readlines()
 
@@ -140,7 +199,4 @@ def load_model(path: str, shader_path_prefix: str = "shaders/"):
 
     normals = [item for sublist in normals for item in sublist]
 
-    model = Model(shader_path_prefix)
-    model.shader.upload_data(vertices, normals, indices, vec3(1.0, 1.0, 1.0))
-
-    return model
+    return vertices, normals, indices

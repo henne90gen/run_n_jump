@@ -1,10 +1,12 @@
+from ctypes import c_float, sizeof
+
 import numpy as np
 from PIL import Image
 from pyglet.gl import *
 
-from math_helper import vec3
-from model import Model
-from render_data import RenderData
+from math_helper import identity, vec3, translate
+from model import ModelAsset, ModelInstance, upload, combine_attributes, add_mvp_uniforms, add_light_uniforms
+from shader import Shader
 
 
 def load_image(filename: str):
@@ -17,22 +19,6 @@ def load_image(filename: str):
         for col in range(1, width * 2, 2):
             map_array[row, (col - 1) // 2] = image_array[row * width * 2 + col]
     return map_array
-
-
-class Labyrinth:
-    def __init__(self, filename: str = "labyrinth.png"):
-        image_array = load_image(filename)
-        vertices, normals, indices = generate_vertices(image_array)
-
-        self.model = Model()
-        self.model.position = vec3(0, -5, 0)
-        self.model.shader.upload_data(vertices, normals, indices, vec3(1.0, 1.0, 1.0))
-
-    def render(self, render_data: RenderData):
-        glEnable(GL_BLEND)
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-
-        self.model.render(render_data)
 
 
 def generate_vertices(arr: np.ndarray):
@@ -108,3 +94,31 @@ def generate_vertices(arr: np.ndarray):
                     left(col + 1, 0, row, s, -1)
 
     return vertices, normals, indices
+
+
+def labyrinth():
+    asset = ModelAsset()
+    asset.shader = Shader("shaders/model_vertex.glsl", "shaders/model_fragment.glsl")
+    stride = 6 * sizeof(c_float)
+    attributes = [
+        (0, 'a_Position', GL_FLOAT, 3, stride, 0),
+        (1, 'a_Normal', GL_FLOAT, 3, stride, 3 * sizeof(c_float))
+    ]
+    asset.attributes = attributes
+
+    image_array = load_image("labyrinth.png")
+    vertices, normals, indices = generate_vertices(image_array)
+    asset.vertex_data = combine_attributes(len(vertices) // 3, (3, vertices), (3, normals))
+    asset.indices = indices
+    asset.draw_count = len(indices)
+    upload(asset)
+
+    add_mvp_uniforms(asset.uniforms)
+    add_light_uniforms(asset.uniforms)
+    asset.uniforms["u_Color"] = "color"
+
+    model = ModelInstance()
+    model.asset = asset
+    model.model_matrix = identity()
+    translate(model.model_matrix, vec3(0, -5, 0))
+    return model
