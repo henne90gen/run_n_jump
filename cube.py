@@ -10,6 +10,7 @@ from shader import Shader
 
 def cube(size, position: vec3, color: vec3):
     asset = ModelAsset()
+    asset.color = color
     asset.shader = Shader("shaders/model_vertex.glsl", "shaders/model_fragment.glsl")
     stride = 6 * sizeof(c_float)
     attributes = [
@@ -31,7 +32,6 @@ def cube(size, position: vec3, color: vec3):
 
     model = ModelInstance()
     model.asset = asset
-    model.color = color
     model.model_matrix = identity()
     scale(model.model_matrix, size)
     translate(model.model_matrix, position)

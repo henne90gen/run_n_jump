@@ -14,11 +14,30 @@ class System:
                 return False
         return True
 
+    def run(self, game_data: GameData, entity):
+        pass
+
     def __repr__(self):
         return self.__str__()
 
     def __str__(self):
         return self.name
+
+
+class InputSystem(System):
+    pass
+
+
+class AccelerationSystem(System):
+    pass
+
+
+class CollisionSystem(System):
+    pass
+
+
+class PositionSystem(System):
+    pass
 
 
 class RenderSystem(System):
@@ -27,8 +46,7 @@ class RenderSystem(System):
         self.components = ['asset']
         self.name = "Renderer"
 
-    @staticmethod
-    def run(game_data: GameData, entity):
+    def run(self, game_data: GameData, entity):
         entity.asset.shader.bind()
 
         glBindVertexArray(entity.asset.vertex_array_id)

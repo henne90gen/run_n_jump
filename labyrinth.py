@@ -109,7 +109,6 @@ def labyrinth():
     image_array = load_image("labyrinth.png")
     vertices, normals, indices = generate_vertices(image_array)
     asset.vertex_data = combine_attributes(len(vertices) // 3, (3, vertices), (3, normals))
-    print(asset.vertex_data)
     asset.indices = indices
     asset.draw_count = len(indices)
     upload(asset)

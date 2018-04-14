@@ -2,10 +2,10 @@ import pyglet
 
 from camera import Camera
 from cube import cube
+from game_data import GameData
 from labyrinth import labyrinth
 from math_helper import vec2, vec3
-from game_data import GameData
-from renderer import RenderSystem
+from systems import RenderSystem, PositionSystem, InputSystem, AccelerationSystem, CollisionSystem
 from text import text2d
 
 
@@ -28,13 +28,18 @@ class Game:
         blue = vec3(0, 0, 255)
         self.entities = [
             self.camera,
-            # cube(size, vec3(size * 5), red),
-            # cube(size, vec3(0, size * 5, 0), green),
-            # cube(size, vec3(0, 0, size * 5), blue),
+            cube(size, vec3(size * 5), red),
+            cube(size, vec3(0, size * 5, 0), green),
+            cube(size, vec3(0, 0, size * 5), blue),
             labyrinth(),
-            # text2d("Hello\n\tWorld", position=vec2(10, 10), font_size=11),
+            text2d("Hello\n\tWorld", position=vec2(100, 100), font_size=11),
         ]
+
         self.systems = [
+            InputSystem(),
+            AccelerationSystem(),
+            CollisionSystem(),
+            PositionSystem(),
             RenderSystem()
         ]
 
@@ -44,9 +49,14 @@ class Game:
         # render_data.light_position = self.light_position
         game_data.light_direction = self.light_direction
 
+        # FIXME move this into systems
+        self.camera.update(game_data.frame_time)
+        self.camera.input(self.key_map, self.mouse_movement)
+
         for entity in self.entities:
             for system in self.systems:
                 if system.supports(entity):
+                    print()
                     print("Running system", system, "on entity", entity)
                     system.run(game_data, entity)
 
