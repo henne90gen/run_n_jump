@@ -30,6 +30,8 @@ class Window(pyglet.window.Window):
         self.frame_start_time = datetime.now()
 
         self.projection_matrix = identity()
+        self.mouse_movement = vec2()
+        self.key_map = {}
         self.game = game.Game()
 
     def show_average_time(self):
@@ -54,11 +56,16 @@ class Window(pyglet.window.Window):
 
         self.clear()
 
-        render_data = GameData()
-        render_data.frame_time = frame_time
-        render_data.screen_dimensions = vec2(self.width, self.height)
-        render_data.projection_matrix = self.projection_matrix
-        self.game.tick(render_data)
+        game_data = GameData()
+        game_data.frame_time = frame_time
+        game_data.screen_dimensions = vec2(self.width, self.height)
+        game_data.projection_matrix = self.projection_matrix
+        game_data.key_map = self.key_map
+        game_data.mouse_movement = self.mouse_movement
+        self.game.tick(game_data)
+
+        # resetting mouse movement after each tick
+        self.mouse_movement = vec2()
 
         self.show_average_time()
 
@@ -80,15 +87,17 @@ class Window(pyglet.window.Window):
         ])
 
     def on_key_press(self, symbol, modifiers):
+        self.key_map[symbol] = True
         self.game.handle_key(symbol, modifiers, True)
 
     # noinspection PyMethodOverriding
     def on_key_release(self, symbol, modifiers):
+        self.key_map[symbol] = False
         self.game.handle_key(symbol, modifiers, False)
 
     # noinspection PyMethodOverriding
     def on_mouse_motion(self, x, y, dx, dy):
-        self.game.handle_mouse(dx, dy)
+        self.mouse_movement = vec2(dx, dy)
 
 
 if __name__ == '__main__':

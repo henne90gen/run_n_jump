@@ -4,7 +4,7 @@ from pyglet.gl import *
 
 import logging_config
 from game_data import GameData
-from math_helper import identity, translate, vec3, rotate
+from math_helper import identity, translate, vec3, rotate, vec2
 
 
 class System:
@@ -38,12 +38,73 @@ class System:
 
 class InputSystem(System):
     def __init__(self):
-        super().__init__("Input", [])
+        super().__init__("Input", ['player', 'acceleration', 'rotation', 'velocity'], ['speed'])
+
+    def run(self, game_data: GameData, entity):
+        if game_data.mouse_movement.x != 0 or game_data.mouse_movement.y != 0:
+            scale_factor = game_data.frame_time * 100 * game_data.sensitivity
+            entity.rotation.x -= game_data.mouse_movement.y * scale_factor
+            entity.rotation.y += game_data.mouse_movement.x * scale_factor
+
+        direction = vec2(1).rotate(entity.rotation.y + 90)
+        sideways_direction = vec3(-direction.y, 0, direction.x)
+        forward_direction = vec3(direction.x, 0, direction.y)
+
+        movement = vec2()
+        for symbol in game_data.key_map:
+            if not game_data.key_map[symbol]:
+                continue
+            if symbol in [pyglet.window.key.W, pyglet.window.key.S]:
+                if symbol == pyglet.window.key.W and movement.y != -1:
+                    movement.y = 1
+                elif symbol == pyglet.window.key.S and movement.y != 1:
+                    movement.y = -1
+                else:
+                    movement.y = 0
+
+            if symbol in [pyglet.window.key.D, pyglet.window.key.A]:
+                if symbol == pyglet.window.key.D and movement.x != -1:
+                    movement.x = 1
+                elif symbol == pyglet.window.key.A and movement.x != 1:
+                    movement.x = -1
+                else:
+                    movement.x = 0
+
+        if movement == vec2():
+            entity.acceleration = vec3()
+            entity.velocity = vec3()
+            return
+
+        forward_direction *= movement.y
+        sideways_direction *= movement.x
+        final_direction = forward_direction + sideways_direction
+        entity.acceleration = final_direction * game_data.frame_time
+        if hasattr(entity, 'speed'):
+            entity.acceleration *= entity.speed
+
+        if entity.velocity == vec3():
+            entity.velocity = final_direction.copy().normalize()
 
 
 class AccelerationSystem(System):
     def __init__(self):
-        super().__init__("Acceleration", [])
+        super().__init__("Acceleration", ['velocity', 'acceleration'], ['speed', 'max_speed'])
+
+    def run(self, game_data: GameData, entity):
+        if entity.velocity.length > 0:
+            drag = entity.velocity.copy().normalize() * -1 * game_data.frame_time
+        else:
+            drag = vec3()
+
+        if hasattr(entity, 'speed'):
+            drag *= entity.speed
+        drag *= 0.5
+
+        entity.velocity += entity.acceleration + drag
+        if hasattr(entity, 'max_speed'):
+            if entity.velocity.length > entity.max_speed:
+                entity.velocity = entity.velocity.normalize() * entity.max_speed
+        entity.acceleration = vec3()
 
 
 class CollisionSystem(System):

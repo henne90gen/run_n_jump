@@ -15,3 +15,5 @@ class GameData:
 
     light_position = vec3()
     light_direction = vec3()
+
+    sensitivity = 0.5

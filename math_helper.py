@@ -23,6 +23,7 @@ class vec2:
         y = math.sin(angle) * self.x + math.cos(angle) * self.y
         self.x = x
         self.y = y
+        return self
 
     def __eq__(self, other):
         if type(other) != vec2:
@@ -40,7 +41,7 @@ class vec2:
         return vec2(self.x - other.x, self.y - other.y)
 
     def __mul__(self, other):
-        if type(other) != float:
+        if type(other) not in [float, int]:
             raise AttributeError
         return vec2(self.x * other, self.y * other)
 
@@ -58,6 +59,19 @@ class vec2:
             self.y = value
         else:
             raise IndexError
+
+    def to_list(self):
+        return [self.x, self.y]
+
+    @property
+    def length(self) -> float:
+        return np.linalg.norm(self.to_list())
+
+    def normalize(self):
+        length = self.length
+        self.x /= length
+        self.y /= length
+        return self
 
 
 # noinspection PyPep8Naming
