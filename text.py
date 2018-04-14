@@ -111,6 +111,7 @@ def text2d(text: str, position: vec2 = vec2(), color: vec3 = vec3(1.0, 1.0, 1.0)
 
     add_texture_uniform(asset.uniforms)
 
+    asset.uniforms["u_Model"] = "model_matrix"
     asset.uniforms["u_Offset"] = "position"
     asset.uniforms["u_Color"] = "color"
 
@@ -118,7 +119,8 @@ def text2d(text: str, position: vec2 = vec2(), color: vec3 = vec3(1.0, 1.0, 1.0)
     model.model_matrix = identity()
     model.asset = asset
     model.color = color
-    model.position = position
+    model.position = vec3(*position, 0)
+    model.name = "Text(" + text.replace("\n", " ").replace("\t", "") + ")"
     return model
 
 

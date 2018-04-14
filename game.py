@@ -1,5 +1,8 @@
+import logging
+
 import pyglet
 
+import logging_config
 from camera import Camera
 from cube import cube
 from game_data import GameData
@@ -11,6 +14,9 @@ from text import text2d
 
 class Game:
     def __init__(self):
+        self.log = logging_config.getLogger(__name__)
+        self.log.setLevel(logging.INFO)
+
         self.key_map = {}
         self.mouse_movement = vec2()
 
@@ -44,20 +50,21 @@ class Game:
         ]
 
     def tick(self, game_data: GameData):
-        game_data.view_matrix = self.camera.view_matrix
+        game_data.key_map = self.key_map
+        game_data.mouse_movement = self.mouse_movement
+        game_data.view_matrix = self.camera.model_matrix
         game_data.light_position = self.camera.position * -1
         # render_data.light_position = self.light_position
         game_data.light_direction = self.light_direction
 
         # FIXME move this into systems
-        self.camera.update(game_data.frame_time)
         self.camera.input(self.key_map, self.mouse_movement)
+        self.camera.update(game_data.frame_time)
 
         for entity in self.entities:
             for system in self.systems:
                 if system.supports(entity):
-                    print()
-                    print("Running system", system, "on entity", entity)
+                    self.log.debug(f"Running system {system} on entity {entity}")
                     system.run(game_data, entity)
 
         # resetting mouse movement each tick
@@ -69,7 +76,7 @@ class Game:
         if symbol == pyglet.window.key.ESCAPE and released:
             exit(0)
         elif symbol != pyglet.window.key.ESCAPE:
-            print("Key event:", symbol, modifiers, pressed)
+            self.log.debug("Key event:", symbol, modifiers, pressed)
 
         self.key_map[symbol] = pressed
 

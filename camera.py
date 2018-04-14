@@ -4,9 +4,12 @@ from math_helper import vec3, vec2, identity, rotate, translate
 
 
 class Camera:
-    def __init__(self, pos: vec3 = vec3(), angle: vec2 = vec2()):
-        self.view_matrix = identity()
-        self.position = pos
+    def __init__(self, position: vec3 = vec3(), angle: vec2 = vec2()):
+        # self.view_matrix = identity()
+        self.model_matrix = identity()
+        self.position = position
+        self.rotation = vec3(angle.x, angle.y, 0)
+
         self.view_angle = angle
         self.direction = vec2(0, 1)
         self.direction.rotate(angle.y)
@@ -47,9 +50,9 @@ class Camera:
             self.view_angle.x -= self.mouse_movement.y * scale_factor
             self.mouse_movement = vec2()
 
-        self.view_matrix = identity()
-        translate(self.view_matrix, self.position)
-        rotate(self.view_matrix, vec3(self.view_angle.x, self.view_angle.y, 0))
+        # self.view_matrix = identity()
+        # translate(self.view_matrix, self.position)
+        # rotate(self.view_matrix, vec3(self.view_angle.x, self.view_angle.y, 0))
 
     def input(self, input_map: dict, mouse_movement: vec2):
         self.key_map = input_map

@@ -191,7 +191,7 @@ class mat4:
         return True
 
     def __str__(self):
-        return f"\n{self.numbers[0]}\n{self.numbers[1]}\n{self.numbers[2]}\n{self.numbers[3]}"
+        return f"[{self.numbers[0]}, {self.numbers[1]}, {self.numbers[2]}, {self.numbers[3]}]"
 
     def __repr__(self):
         return self.__str__()

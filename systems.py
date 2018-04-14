@@ -1,12 +1,24 @@
+import logging
+
 from pyglet.gl import *
 
+import logging_config
 from game_data import GameData
+from math_helper import identity, translate, vec3, rotate
 
 
 class System:
-    def __init__(self):
-        self.components = []
-        self.name = "System"
+    def __init__(self, name, components: list = None, optional_components: list = None):
+        if components is None:
+            components = []
+        if optional_components is None:
+            optional_components = []
+        self.components = components
+        self.optional_components = optional_components
+        self.name = name
+
+        self.log = logging_config.getLogger(self.name)
+        self.log.setLevel(logging.INFO)
 
     def supports(self, entity):
         for component in self.components:
@@ -25,26 +37,46 @@ class System:
 
 
 class InputSystem(System):
-    pass
+    def __init__(self):
+        super().__init__("Input", [])
 
 
 class AccelerationSystem(System):
-    pass
+    def __init__(self):
+        super().__init__("Acceleration", [])
 
 
 class CollisionSystem(System):
-    pass
+    def __init__(self):
+        super().__init__("Collission", [])
 
 
 class PositionSystem(System):
-    pass
+    def __init__(self):
+        super().__init__("Position", ['position', 'model_matrix'], ['velocity', 'rotation'])
+        self.log.setLevel(logging.DEBUG)
+
+    def run(self, game_data: GameData, entity):
+        if hasattr(entity, 'velocity'):
+            entity.position += entity.velocity
+
+        entity.model_matrix = identity()
+        if type(entity.position) == vec3:
+            translate(entity.model_matrix, entity.position)
+        else:
+            self.log.error(f"Position is not vec3. Could not update model_matrix on {entity}")
+
+        if hasattr(entity, 'rotation'):
+            if type(entity.rotation) == vec3:
+                rotate(entity.model_matrix, entity.rotation)
+            else:
+                self.log.error(f"Rotation is not vec3. Could not update model_matrix on {entity}")
 
 
 class RenderSystem(System):
     def __init__(self):
-        super().__init__()
-        self.components = ['asset']
-        self.name = "Renderer"
+        super().__init__("Render", ['asset'])
+        self.log.setLevel(logging.INFO)
 
     def run(self, game_data: GameData, entity):
         entity.asset.shader.bind()
@@ -61,22 +93,23 @@ class RenderSystem(System):
 
         for uniform_name in entity.asset.uniforms:
             data_name = entity.asset.uniforms[uniform_name]
+            mapping = f"{uniform_name}=>{data_name}"
             if type(data_name) != str:
-                print("Found", data_name, "in uniforms")
+                self.log.debug(f"Found {mapping} in uniforms")
                 # read data directly from uniforms
                 data = data_name
                 entity.asset.shader.uniform(uniform_name, data)
             elif hasattr(entity.asset, data_name):
-                print("Found", data_name, "in asset")
+                self.log.debug(f"Found {mapping} in asset")
                 entity.asset.shader.uniform(uniform_name, getattr(entity.asset, data_name))
             elif hasattr(entity, data_name):
-                print("Found", data_name, "in entity")
+                self.log.debug(f"Found {mapping} in entity")
                 entity.asset.shader.uniform(uniform_name, getattr(entity, data_name))
             elif hasattr(game_data, data_name):
-                print("Found", data_name, "in game_data")
+                self.log.debug(f"Found {mapping} in game_data")
                 entity.asset.shader.uniform(uniform_name, getattr(game_data, data_name))
             else:
-                print("Could not find any data for", uniform_name)
+                self.log.warning(f"Could not find any data for {mapping}")
 
         if entity.asset.texture is not None:
             texture_id = entity.asset.texture.id

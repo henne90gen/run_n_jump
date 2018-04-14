@@ -4,6 +4,9 @@ from math_helper import identity, vec3, vec2
 class GameData:
     frame_time = 0.0
 
+    key_map = {}
+    mouse_movement = vec2()
+
     screen_dimensions = vec2()
 
     model_matrix = identity()

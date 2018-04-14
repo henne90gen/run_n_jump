@@ -1,3 +1,4 @@
+import logging
 from builtins import bytes
 from ctypes import (
     byref, c_char, c_char_p, c_int, c_float, cast, create_string_buffer, pointer,
@@ -6,11 +7,15 @@ from ctypes import (
 
 from pyglet.gl import *
 
+import logging_config
 from math_helper import mat4, vec3, vec2
 
 
 class Shader:
     def __init__(self, vertex_shader_name: str = "", fragment_shader_name: str = ""):
+        self.log = logging_config.getLogger(__name__)
+        self.log.setLevel(logging.INFO)
+
         # create the program handle
         self.handle = glCreateProgram()
         # we are not linked yet
@@ -60,7 +65,7 @@ class Shader:
             # retrieve the log text
             glGetShaderInfoLog(shader, temp, None, buffer)
             # print the log to the console
-            print(buffer.value)
+            self.log.error(f"{buffer.value}")
         else:
             # all is well, so attach the shader to the program
             glAttachShader(self.handle, shader)
@@ -80,7 +85,7 @@ class Shader:
             # retrieve the log text
             glGetProgramInfoLog(self.handle, temp, None, buffer)
             # print the log to the console
-            print(buffer.value)
+            self.log.error(f"{buffer.value}")
         else:
             # all is well, so we are linked
             self.linked = True
@@ -95,7 +100,6 @@ class Shader:
         glUseProgram(0)
 
     def uniform(self, name: str, data):
-        print("Binding", name, "with data:", data)
         data_type = type(data)
         if data_type == mat4:
             self.uniform_matrixf(name, data)
@@ -105,6 +109,10 @@ class Shader:
             self.uniformf(name, data)
         elif data_type == int:
             self.uniformi(name, data)
+        else:
+            self.log.error(f"Could not bind {name}")
+            return
+        self.log.debug(f"Bound {name} with data: {data}")
 
     def uniformf(self, name: str, *vals):
         # upload a floating point uniform
