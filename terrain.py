@@ -6,7 +6,7 @@ from pyglet.gl import *
 
 from math_helper import vec3
 from model import Model
-from render_data import RenderData
+from game_data import GameData
 
 
 class Terrain:
@@ -45,7 +45,7 @@ class Terrain:
         thread = Process(target=generate_vertices, args=arguments)
         thread.start()
 
-    def render(self, render_data: RenderData):
+    def render(self, render_data: GameData):
         if self.data_updated.value:
             self.model.shader.upload_data(self.vertices, self.normals, self.indices, self.color)
             self.data_updated.value = False

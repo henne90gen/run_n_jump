@@ -30,7 +30,7 @@ def generate_vertices(arr: np.ndarray):
         index = len(indices)
         indices.extend([index, index + 1, index + 2, index + 3, index + 4, index + 5])
 
-    def plane(x: float, y: float, normal_direction: float, position: float, scale: float):
+    def floor(x: float, y: float, normal_direction: float, position: float, scale: float):
         add_quad_to_index()
 
         normal = [0, normal_direction, 0]
@@ -80,8 +80,8 @@ def generate_vertices(arr: np.ndarray):
             color = arr[row, col]
             if color == 255:
                 s = 10
-                plane(col, row, -1, 10, s)
-                plane(col, row, 1, 0, s)
+                floor(col, row, -1, 10, s)
+                floor(col, row, 1, 0, s)
 
                 if arr[row + 1, col] != 255:
                     front(col, 0, row + 1, s, -1)
@@ -109,6 +109,7 @@ def labyrinth():
     image_array = load_image("labyrinth.png")
     vertices, normals, indices = generate_vertices(image_array)
     asset.vertex_data = combine_attributes(len(vertices) // 3, (3, vertices), (3, normals))
+    print(asset.vertex_data)
     asset.indices = indices
     asset.draw_count = len(indices)
     upload(asset)
@@ -118,6 +119,7 @@ def labyrinth():
     asset.uniforms["u_Color"] = "color"
 
     model = ModelInstance()
+    model.name = "Labyrinth"
     model.asset = asset
     model.model_matrix = identity()
     translate(model.model_matrix, vec3(0, -5, 0))

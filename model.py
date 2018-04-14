@@ -3,7 +3,6 @@ from ctypes import sizeof
 from pyglet.gl import *
 
 from math_helper import identity, vec3
-from render_data import RenderData
 
 
 class Texture:
@@ -26,6 +25,8 @@ class Texture:
 class ModelAsset:
     shader = None
     texture = None
+    color = None
+
     vertex_array_id = -1
     vertex_buffer_id = -1
     index_buffer_id = -1
@@ -41,6 +42,7 @@ class ModelAsset:
 
     def __init__(self, use_index_buffer: bool = True):
         self.use_index_buffer = use_index_buffer
+        self.color = vec3(1.0, 1.0, 1.0)
 
         self.vertex_data = []
         self.indices = []
@@ -62,51 +64,16 @@ class ModelAsset:
 class ModelInstance:
     asset: ModelAsset = None
     model_matrix = None
-    color = None
+    name = "ModelInstance"
 
     def __init__(self):
         self.model_matrix = identity()
-        self.color = vec3(1.0, 1.0, 1.0)
 
-    def render(self, render_data: RenderData):
-        self.asset.shader.bind()
+    def __repr__(self):
+        return self.__repr__()
 
-        glBindVertexArray(self.asset.vertex_array_id)
-
-        glBindBuffer(GL_ARRAY_BUFFER, self.asset.vertex_buffer_id)
-        for position, name, gl_type, size, stride, offset in self.asset.attributes:
-            glVertexAttribPointer(position, size, gl_type, GL_FALSE, stride, offset)
-            glEnableVertexAttribArray(position)
-            glBindAttribLocation(self.asset.shader.handle, position, bytes(name, "utf-8"))
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, self.asset.index_buffer_id)
-
-        for uniform_name in self.asset.uniforms:
-            data_name = self.asset.uniforms[uniform_name]
-            print(data_name)
-            if type(data_name) != str:
-                # read data directly from uniforms
-                data = data_name
-                self.asset.shader.uniform(uniform_name, data)
-            elif hasattr(self, data_name):
-                print("model", getattr(self, data_name))
-                self.asset.shader.uniform(uniform_name, getattr(self, data_name))
-            elif hasattr(render_data, data_name):
-                print("render_data")
-                self.asset.shader.uniform(uniform_name, getattr(render_data, data_name))
-
-        if self.asset.texture is not None:
-            texture_id = self.asset.texture.id
-            texture_unit = self.asset.texture.texture_unit
-            glActiveTexture(texture_unit)
-            glBindTexture(GL_TEXTURE_2D, texture_id)
-
-        if self.asset.use_index_buffer:
-            glDrawElements(self.asset.draw_type, self.asset.draw_count, GL_UNSIGNED_INT, None)
-        else:
-            glDrawArrays(self.asset.draw_type, self.asset.draw_start, self.asset.draw_count)
-
-        self.asset.shader.unbind()
+    def __str__(self):
+        return self.name
 
 
 def add_mvp_uniforms(uniforms):

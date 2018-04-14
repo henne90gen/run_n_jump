@@ -1,7 +1,7 @@
 from math_helper import identity, vec3, vec2
 
 
-class RenderData:
+class GameData:
     frame_time = 0.0
 
     screen_dimensions = vec2()

@@ -4,7 +4,8 @@ from camera import Camera
 from cube import cube
 from labyrinth import labyrinth
 from math_helper import vec2, vec3
-from render_data import RenderData
+from game_data import GameData
+from renderer import RenderSystem
 from text import text2d
 
 
@@ -27,26 +28,27 @@ class Game:
         blue = vec3(0, 0, 255)
         self.entities = [
             self.camera,
-            cube(size, vec3(size * 5), red),
-            cube(size, vec3(0, size * 5, 0), green),
-            cube(size, vec3(0, 0, size * 5), blue),
+            # cube(size, vec3(size * 5), red),
+            # cube(size, vec3(0, size * 5, 0), green),
+            # cube(size, vec3(0, 0, size * 5), blue),
             labyrinth(),
-            text2d("Hello\n\tWorld", position=vec2(200, 200), font_size=48),
+            # text2d("Hello\n\tWorld", position=vec2(10, 10), font_size=11),
+        ]
+        self.systems = [
+            RenderSystem()
         ]
 
-    def tick(self, render_data: RenderData):
-        render_data.view_matrix = self.camera.view_matrix
-        render_data.light_position = self.camera.position * -1
+    def tick(self, game_data: GameData):
+        game_data.view_matrix = self.camera.view_matrix
+        game_data.light_position = self.camera.position * -1
         # render_data.light_position = self.light_position
-        render_data.light_direction = self.light_direction
+        game_data.light_direction = self.light_direction
 
         for entity in self.entities:
-            if hasattr(entity, "input"):
-                entity.input(self.key_map, self.mouse_movement)
-            if hasattr(entity, "update"):
-                entity.update(render_data.frame_time)
-            if hasattr(entity, "render"):
-                entity.render(render_data)
+            for system in self.systems:
+                if system.supports(entity):
+                    print("Running system", system, "on entity", entity)
+                    system.run(game_data, entity)
 
         # resetting mouse movement each tick
         self.mouse_movement = vec2()

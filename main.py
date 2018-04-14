@@ -7,7 +7,7 @@ from pyglet.gl import *
 import game
 import hot_reload
 from math_helper import identity, mat4, vec2
-from render_data import RenderData
+from game_data import GameData
 
 MODULE_WHITELIST = ['game']
 
@@ -54,7 +54,7 @@ class Window(pyglet.window.Window):
 
         self.clear()
 
-        render_data = RenderData()
+        render_data = GameData()
         render_data.frame_time = frame_time
         render_data.screen_dimensions = vec2(self.width, self.height)
         render_data.projection_matrix = self.projection_matrix

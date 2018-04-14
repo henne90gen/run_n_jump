@@ -95,6 +95,7 @@ class Shader:
         glUseProgram(0)
 
     def uniform(self, name: str, data):
+        print("Binding", name, "with data:", data)
         data_type = type(data)
         if data_type == mat4:
             self.uniform_matrixf(name, data)
