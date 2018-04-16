@@ -1,10 +1,12 @@
 import logging
+import math
 
 from pyglet.gl import *
 
 import logging_config
 from game_data import GameData
-from math_helper import identity, translate, vec3, rotate, vec2
+from math_helper import identity, translate, vec3, rotate, vec2, scale, dot, mat4
+from model import BoundingBox
 
 
 class System:
@@ -92,13 +94,12 @@ class AccelerationSystem(System):
 
     def run(self, game_data: GameData, entity):
         if entity.velocity.length > 0:
-            drag = entity.velocity.copy().normalize() * -1 * game_data.frame_time
+            drag = entity.velocity.copy().normalize() * -0.5 * game_data.frame_time
         else:
             drag = vec3()
 
         if hasattr(entity, 'speed'):
             drag *= entity.speed
-        drag *= 0.5
 
         entity.velocity += entity.acceleration + drag
         if hasattr(entity, 'max_speed'):
@@ -109,19 +110,112 @@ class AccelerationSystem(System):
 
 class CollisionSystem(System):
     def __init__(self):
-        super().__init__("Collission", [])
+        super().__init__("Collision", ['model_matrix', 'bounding_boxes'])
+
+    @staticmethod
+    def project(box: BoundingBox, model_matrix: mat4, normal: vec3):
+        min_box = None
+        max_box = None
+        for vertex in box.vertices:
+            projection = dot(model_matrix * vertex, normal)
+            if min_box is None or min_box > projection:
+                min_box = projection
+            if max_box is None or max_box < projection:
+                max_box = projection
+        return float(min_box), float(max_box)
+
+    @staticmethod
+    def get_overlap(start1, end1, start2, end2):
+        if start1 <= start2 <= end2 <= end1:
+            return abs(end2 - start2)
+        elif start2 <= start1 <= end1 <= end2:
+            return abs(end1 - start1)
+        elif start1 <= start2:
+            return abs(end1 - start2)
+        elif start2 <= start1:
+            return abs(end2 - start1)
+        return 0
+
+    @staticmethod
+    def collides(box: BoundingBox, box_model_matrix: mat4, other: BoundingBox, other_model_matrix: mat4):
+        minimum_overlap = None
+        overlap_normal = None
+        for normal in box.normals:
+            normal = normal.copy().normalize()
+            min_box, max_box = CollisionSystem.project(box, box_model_matrix, normal)
+            min_other, max_other = CollisionSystem.project(other, other_model_matrix, normal)
+            if max_box < min_other and max_box < max_other:
+                return False, None
+            elif min_box > min_other and min_box > max_other:
+                return False, None
+            else:
+                overlap = CollisionSystem.get_overlap(min_box, max_box, min_other, max_other)
+                if minimum_overlap is None or minimum_overlap > overlap:
+                    minimum_overlap = overlap
+                    overlap_normal = normal
+
+        for normal in other.normals:
+            normal = normal.copy().normalize()
+            min_box, max_box = CollisionSystem.project(box, box_model_matrix, normal)
+            min_other, max_other = CollisionSystem.project(other, other_model_matrix, normal)
+            if max_box < min_other and max_box < max_other:
+                return False, None
+            elif min_box > min_other and min_box > max_other:
+                return False, None
+            else:
+                overlap = CollisionSystem.get_overlap(min_box, max_box, min_other, max_other)
+                if minimum_overlap is None or minimum_overlap > overlap:
+                    minimum_overlap = overlap
+                    overlap_normal = normal
+
+        return True, overlap_normal * (minimum_overlap + 0.000000000000001)
+
+    def run(self, game_data: GameData, entity):
+        for other in game_data.entities:
+            if entity == other or not (hasattr(other, 'model_matrix') and hasattr(other, 'bounding_boxes')):
+                continue
+            self.log.info(f"Checking {entity} against {other}")
+            # if hasattr(other, 'collided') and entity in other.collided:
+            #     continue
+
+            for box in entity.bounding_boxes:
+                for other_box in other.bounding_boxes:
+                    collides, overlap = self.collides(
+                        box, entity.model_matrix,
+                        other_box, other.model_matrix
+                    )
+                    self.log.info(f"Collision result: {collides}, {overlap}")
+                    if collides:
+                        self.log.info(f"{entity} collides with {other} with an overlap of {overlap}")
+                        # if not hasattr(entity, 'collided'):
+                        #     entity.collided = []
+                        # entity.collided.append(other)
+
+                        direction = dot(entity.position, overlap) - dot(other.position, overlap)
+                        if direction < 0:
+                            direction = 1
+                        elif direction > 0:
+                            direction = -1
+
+                        if hasattr(entity, 'acceleration') and hasattr(entity, 'velocity'):
+                            entity.velocity -= overlap * direction
+                        if hasattr(other, 'acceleration') and hasattr(other, 'velocity'):
+                            other.velocity += overlap * direction
 
 
 class PositionSystem(System):
     def __init__(self):
-        super().__init__("Position", ['position', 'model_matrix'], ['velocity', 'rotation'])
-        self.log.setLevel(logging.DEBUG)
+        super().__init__("Position", ['position', 'model_matrix'], ['velocity', 'rotation', 'scale'])
 
     def run(self, game_data: GameData, entity):
         if hasattr(entity, 'velocity'):
             entity.position += entity.velocity
+        self.log.debug(f"{entity.position}")
 
         entity.model_matrix = identity()
+        if hasattr(entity, 'scale'):
+            scale(entity.model_matrix, entity.scale)
+
         if type(entity.position) == vec3:
             translate(entity.model_matrix, entity.position)
         else:
@@ -137,7 +231,6 @@ class PositionSystem(System):
 class RenderSystem(System):
     def __init__(self):
         super().__init__("Render", ['asset'])
-        self.log.setLevel(logging.INFO)
 
     def run(self, game_data: GameData, entity):
         entity.asset.shader.bind()
@@ -184,3 +277,13 @@ class RenderSystem(System):
             glDrawArrays(entity.asset.draw_type, entity.asset.draw_start, entity.asset.draw_count)
 
         entity.asset.shader.unbind()
+
+
+class ResetSystem(System):
+    def __init__(self):
+        super().__init__("Reset", [])
+
+    def run(self, game_data: GameData, entity):
+        # if hasattr(entity, 'collided'):
+        #     del entity.collided
+        pass

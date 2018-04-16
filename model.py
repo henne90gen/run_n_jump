@@ -61,6 +61,12 @@ class ModelAsset:
             glGenBuffers(1, self.index_buffer_id)
 
 
+class BoundingBox:
+    def __init__(self):
+        self.vertices = []
+        self.normals = []
+
+
 class ModelInstance:
     asset: ModelAsset = None
     model_matrix = None
@@ -70,7 +76,7 @@ class ModelInstance:
         self.model_matrix = identity()
 
     def __repr__(self):
-        return self.__repr__()
+        return self.__str__()
 
     def __str__(self):
         return self.name
@@ -166,4 +172,4 @@ def load_blender_file(path):
 
     normals = [item for sublist in normals for item in sublist]
 
-    return vertices, normals, indices
+    return vertices, normals, indices, all_normals

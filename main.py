@@ -16,7 +16,7 @@ class Window(pyglet.window.Window):
     def __init__(self, width, height, resizable: bool = False):
         super(Window, self).__init__(width, height, resizable=resizable)
 
-        self.set_exclusive_mouse(True)
+        # self.set_exclusive_mouse(True)
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)

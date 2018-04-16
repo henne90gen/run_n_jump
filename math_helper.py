@@ -1,5 +1,4 @@
 import math
-import random
 from datetime import datetime
 
 import numpy as np
@@ -111,7 +110,7 @@ class vec3:
 
     def __mul__(self, other):
         if type(other) not in [float, int]:
-            raise AttributeError
+            raise AttributeError(f"{type(other)} is not float or int")
         return vec3(self.x * other, self.y * other, self.z * other)
 
     def __getitem__(self, item):
@@ -138,7 +137,7 @@ class vec3:
 
     @property
     def length(self) -> float:
-        return np.linalg.norm(self.to_list())
+        return float(np.linalg.norm(self.to_list()))
 
     def copy(self):
         return vec3(self.x, self.y, self.z)
@@ -174,6 +173,10 @@ class vec3:
 
 def cross(u, v) -> vec3:
     return vec3(arr=np.cross(u.to_list(), v.to_list()))
+
+
+def dot(u: vec3, v: vec3) -> float:
+    return u.x * v.x + u.y * v.y + u.z * v.z
 
 
 # noinspection PyPep8Naming
@@ -244,6 +247,7 @@ def identity():
 def scale(m: mat4, s):
     if type(s) in [float, int]:
         s = vec3(s, s, s)
+
     m1 = mat4()
     m1.numbers = m.numbers
     m2 = mat4([
