@@ -25,6 +25,7 @@ def generate_vertices(arr: np.ndarray):
     vertices = []
     normals = []
     indices = []
+    bounding_boxes = []
 
     def add_quad_to_index():
         index = len(indices)
@@ -93,7 +94,7 @@ def generate_vertices(arr: np.ndarray):
                 if arr[row, col + 1] != 255:
                     left(col + 1, 0, row, s, -1)
 
-    return vertices, normals, indices
+    return vertices, normals, indices, bounding_boxes
 
 
 def labyrinth():
@@ -107,7 +108,7 @@ def labyrinth():
     asset.attributes = attributes
 
     image_array = load_image("labyrinth.png")
-    vertices, normals, indices = generate_vertices(image_array)
+    vertices, normals, indices, bounding_boxes = generate_vertices(image_array)
     asset.vertex_data = combine_attributes(len(vertices) // 3, (3, vertices), (3, normals))
     asset.indices = indices
     asset.draw_count = len(indices)
@@ -120,6 +121,7 @@ def labyrinth():
     model = ModelInstance()
     model.name = "Labyrinth"
     model.asset = asset
+    model.bounding_boxes = bounding_boxes
     model.model_matrix = identity()
     translate(model.model_matrix, vec3(0, -5, 0))
     return model

@@ -43,6 +43,8 @@ class InputSystem(System):
         super().__init__("Input", ['player', 'acceleration', 'rotation', 'velocity'], ['speed'])
 
     def run(self, game_data: GameData, entity):
+        # if pyglet.window.key.E in game_data.key_map and game_data.key_map[pyglet.window.key.E]:
+
         if game_data.mouse_movement.x != 0 or game_data.mouse_movement.y != 0:
             scale_factor = game_data.frame_time * 100 * game_data.sensitivity
             entity.rotation.x -= game_data.mouse_movement.y * scale_factor
@@ -58,17 +60,17 @@ class InputSystem(System):
                 continue
             if symbol in [pyglet.window.key.W, pyglet.window.key.S]:
                 if symbol == pyglet.window.key.W and movement.y != -1:
-                    movement.y = 1
-                elif symbol == pyglet.window.key.S and movement.y != 1:
                     movement.y = -1
+                elif symbol == pyglet.window.key.S and movement.y != 1:
+                    movement.y = 1
                 else:
                     movement.y = 0
 
             if symbol in [pyglet.window.key.D, pyglet.window.key.A]:
                 if symbol == pyglet.window.key.D and movement.x != -1:
-                    movement.x = 1
-                elif symbol == pyglet.window.key.A and movement.x != 1:
                     movement.x = -1
+                elif symbol == pyglet.window.key.A and movement.x != 1:
+                    movement.x = 1
                 else:
                     movement.x = 0
 
@@ -174,9 +176,6 @@ class CollisionSystem(System):
         for other in game_data.entities:
             if entity == other or not (hasattr(other, 'model_matrix') and hasattr(other, 'bounding_boxes')):
                 continue
-            self.log.info(f"Checking {entity} against {other}")
-            # if hasattr(other, 'collided') and entity in other.collided:
-            #     continue
 
             for box in entity.bounding_boxes:
                 for other_box in other.bounding_boxes:
@@ -184,18 +183,13 @@ class CollisionSystem(System):
                         box, entity.model_matrix,
                         other_box, other.model_matrix
                     )
-                    self.log.info(f"Collision result: {collides}, {overlap}")
                     if collides:
                         self.log.info(f"{entity} collides with {other} with an overlap of {overlap}")
-                        # if not hasattr(entity, 'collided'):
-                        #     entity.collided = []
-                        # entity.collided.append(other)
-
                         direction = dot(entity.position, overlap) - dot(other.position, overlap)
                         if direction < 0:
-                            direction = 1
+                            direction = 0.08
                         elif direction > 0:
-                            direction = -1
+                            direction = -0.08
 
                         if hasattr(entity, 'acceleration') and hasattr(entity, 'velocity'):
                             entity.velocity -= overlap * direction
@@ -216,16 +210,16 @@ class PositionSystem(System):
         if hasattr(entity, 'scale'):
             scale(entity.model_matrix, entity.scale)
 
-        if type(entity.position) == vec3:
-            translate(entity.model_matrix, entity.position)
-        else:
-            self.log.error(f"Position is not vec3. Could not update model_matrix on {entity}")
-
         if hasattr(entity, 'rotation'):
             if type(entity.rotation) == vec3:
                 rotate(entity.model_matrix, entity.rotation)
             else:
                 self.log.error(f"Rotation is not vec3. Could not update model_matrix on {entity}")
+
+        if type(entity.position) == vec3:
+            translate(entity.model_matrix, entity.position)
+        else:
+            self.log.error(f"Position is not vec3. Could not update model_matrix on {entity}")
 
 
 class RenderSystem(System):
