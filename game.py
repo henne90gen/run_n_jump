@@ -8,7 +8,8 @@ from cube import cube
 from game_data import GameData
 from labyrinth import labyrinth
 from math_helper import vec2, vec3, identity, rotate, translate
-from systems import RenderSystem, PositionSystem, InputSystem, AccelerationSystem, CollisionSystem, BoundingBoxRenderSystem
+from systems import RenderSystem, PositionSystem, InputSystem, AccelerationSystem, CollisionSystem, \
+    BoundingBoxRenderSystem
 from text import text2d
 
 
@@ -49,17 +50,18 @@ class Game:
         # self.entities[control_index].velocity = vec3()
         # self.entities[control_index].acceleration = vec3()
 
-        self.systems = [
-            InputSystem(),
-            CollisionSystem(),
-            AccelerationSystem(),
-            PositionSystem(),
-            RenderSystem(),
-            BoundingBoxRenderSystem()
-        ]
+        self.systems = {
+            "input": InputSystem(),
+            "collision": CollisionSystem(),
+            "acceleration": AccelerationSystem(),
+            "position": PositionSystem(),
+            "render": RenderSystem(),
+            "bbrender": BoundingBoxRenderSystem()
+        }
 
     def tick(self, game_data: GameData):
         game_data.entities = self.entities
+        game_data.systems = self.systems
 
         view_matrix = identity()
         translate(view_matrix, vec3(-self.camera.position.x, self.camera.position.y, -self.camera.position.z))
@@ -69,11 +71,12 @@ class Game:
         game_data.light_position = self.camera.position
         game_data.light_direction = self.light_direction
 
-        for system in self.systems:
+        for system in self.systems.values():
             for entity in self.entities:
                 if system.supports(entity):
                     self.log.debug(f"Running system {system} on entity {entity}")
                     system.run(game_data, entity)
+            system.reset()
 
     def handle_key(self, symbol, modifiers, pressed):
         released = not pressed

@@ -81,12 +81,6 @@ def generate_vertices(arr: np.ndarray):
             model.asset.model_matrix = model.model_matrix
             box.asset = model.asset
             bounding_boxes.append(box)
-        # else:
-        #     box = BoundingBox()
-        #     box.normals = cube_normals.copy()
-        #     position = vec3(x, y + 1, z+normal_direction)
-        #     box.vertices = list(map(lambda v: v + position, cube_vertices.copy()))
-        #     bounding_boxes.append(box)
 
     def left(x: float, y: float, z: float, normal_direction: float):
         add_quad_to_index()

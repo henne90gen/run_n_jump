@@ -19,3 +19,4 @@ class GameData:
     sensitivity = 0.5
 
     entities = []
+    systems = {}

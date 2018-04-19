@@ -28,6 +28,9 @@ class System:
                 return False
         return True
 
+    def reset(self):
+        pass
+
     def run(self, game_data: GameData, entity):
         pass
 
@@ -139,36 +142,37 @@ class CollisionSystem(System):
         return 0
 
     @staticmethod
-    def collides(box: BoundingBox, box_model_matrix: mat4, other: BoundingBox, other_model_matrix: mat4):
+    def check_for_overlap(normals: list, box: BoundingBox, box_model_matrix: mat4, other: BoundingBox,
+                          other_model_matrix: mat4):
         minimum_overlap = None
         overlap_normal = None
-        for normal in box.normals:
+        for normal in normals:
             normal = normal.copy().normalize()
             min_box, max_box = CollisionSystem.project(box, box_model_matrix, normal)
             min_other, max_other = CollisionSystem.project(other, other_model_matrix, normal)
             if max_box < min_other and max_box < max_other:
-                return False, None
+                return None, None
             elif min_box > min_other and min_box > max_other:
-                return False, None
+                return None, None
             else:
                 overlap = CollisionSystem.get_overlap(min_box, max_box, min_other, max_other)
                 if minimum_overlap is None or minimum_overlap > overlap:
                     minimum_overlap = overlap
                     overlap_normal = normal
 
-        for normal in other.normals:
-            normal = normal.copy().normalize()
-            min_box, max_box = CollisionSystem.project(box, box_model_matrix, normal)
-            min_other, max_other = CollisionSystem.project(other, other_model_matrix, normal)
-            if max_box < min_other and max_box < max_other:
-                return False, None
-            elif min_box > min_other and min_box > max_other:
-                return False, None
-            else:
-                overlap = CollisionSystem.get_overlap(min_box, max_box, min_other, max_other)
-                if minimum_overlap is None or minimum_overlap > overlap:
-                    minimum_overlap = overlap
-                    overlap_normal = normal
+        return minimum_overlap, overlap_normal
+
+    @staticmethod
+    def collides(box: BoundingBox, box_model_matrix: mat4, other: BoundingBox, other_model_matrix: mat4):
+        minimum_overlap, overlap_normal = CollisionSystem.check_for_overlap(box.normals, box, box_model_matrix, other,
+                                                                            other_model_matrix)
+        if minimum_overlap is None or overlap_normal is None:
+            return False, None
+
+        minimum_overlap, overlap_normal = CollisionSystem.check_for_overlap(other.normals, box, box_model_matrix, other,
+                                                                            other_model_matrix)
+        if minimum_overlap is None or overlap_normal is None:
+            return False, None
 
         return True, overlap_normal * (minimum_overlap + 0.000000000000001)
 
@@ -184,25 +188,27 @@ class CollisionSystem(System):
                         other_box, other.model_matrix
                     )
                     if collides:
-                        self.log.info(f"{entity} collides with {other} with an overlap of {overlap}")
                         direction = dot(entity.position, overlap) - dot(other.position, overlap)
                         if direction < 0:
-                            direction = 0.08
+                            direction = -1
                         elif direction > 0:
-                            direction = -0.08
+                            direction = 1
+                        overlap *= direction
+                        self.log.info(f"{entity} collides with {other} with an overlap of {overlap}")
 
-                        if hasattr(entity, 'acceleration') and hasattr(entity, 'velocity'):
-                            entity.velocity -= overlap * direction
-                        if hasattr(other, 'acceleration') and hasattr(other, 'velocity'):
-                            other.velocity += overlap * direction
+                        entity.collision = overlap
+                        other.collision = overlap * -1
 
 
 class PositionSystem(System):
     def __init__(self):
-        super().__init__("Position", ['position', 'model_matrix'], ['velocity', 'rotation', 'scale'])
+        super().__init__("Position", ['position', 'model_matrix'], ['velocity', 'rotation', 'scale', 'collision'])
 
     def run(self, game_data: GameData, entity):
         if hasattr(entity, 'velocity'):
+            if hasattr(entity, 'collision'):
+                entity.position += entity.collision
+                del entity.collision
             entity.position += entity.velocity
         self.log.debug(f"{entity.position}")
 
@@ -225,8 +231,15 @@ class PositionSystem(System):
 class RenderSystem(System):
     def __init__(self):
         super().__init__("Render", ['asset'])
+        self.render_calls = 0
+
+    def reset(self):
+        self.log.debug(f"{self.render_calls} render calls")
+        self.render_calls = 0
 
     def run(self, game_data: GameData, entity):
+        self.render_calls += 1
+
         entity.asset.shader.bind()
 
         glBindVertexArray(entity.asset.vertex_array_id)
@@ -267,7 +280,9 @@ class RenderSystem(System):
             glBindTexture(GL_TEXTURE_2D, texture_id)
 
         if entity.asset.use_index_buffer:
-            glDrawElements(entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_type, entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count, GL_UNSIGNED_INT, None)
+            glDrawElements(entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_type,
+                           entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count, GL_UNSIGNED_INT,
+                           None)
         else:
             glDrawArrays(entity.asset.draw_type, entity.asset.draw_start, entity.asset.draw_count)
 
@@ -281,4 +296,4 @@ class BoundingBoxRenderSystem(System):
     def run(self, game_data: GameData, entity):
         for bounding_box in entity.bounding_boxes:
             if hasattr(bounding_box, 'asset'):
-                RenderSystem().run(game_data, bounding_box)
+                game_data.systems['render'].run(game_data, bounding_box)
