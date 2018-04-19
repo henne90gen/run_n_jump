@@ -4,8 +4,10 @@ import numpy as np
 from PIL import Image
 from pyglet.gl import *
 
-from math_helper import identity, vec3, translate
-from model import ModelAsset, ModelInstance, upload, combine_attributes, add_mvp_uniforms, add_light_uniforms
+from cube import cube
+from math_helper import identity, vec3, translate, scale
+from model import ModelAsset, ModelInstance, upload, combine_attributes, add_mvp_uniforms, add_light_uniforms, \
+    BoundingBox, IndexBuffer
 from shader import Shader
 
 
@@ -22,6 +24,14 @@ def load_image(filename: str):
 
 
 def generate_vertices(arr: np.ndarray):
+    cube_normals = [vec3(1), vec3(-1), vec3(0, 1), vec3(0, -1), vec3(0, 0, 1), vec3(0, 0, -1)]
+    cube_vertices = [
+        vec3(1, 1, 1), vec3(0, 1, 1),
+        vec3(1, 0, 1), vec3(1, 1, 0),
+        vec3(1, 0, 0), vec3(0, 1, 0),
+        vec3(0, 0, 1), vec3(0, 0, 0)
+    ]
+
     vertices = []
     normals = []
     indices = []
@@ -31,68 +41,97 @@ def generate_vertices(arr: np.ndarray):
         index = len(indices)
         indices.extend([index, index + 1, index + 2, index + 3, index + 4, index + 5])
 
-    def floor(x: float, y: float, normal_direction: float, position: float, scale: float):
+    def floor(x: float, y: float, normal_direction: float, position: float):
         add_quad_to_index()
 
         normal = [0, normal_direction, 0]
         for _ in range(6):
             normals.extend(normal)
 
-        vertices.extend([x * scale, position, y * scale])
-        vertices.extend([(x + 1) * scale, position, y * scale])
-        vertices.extend([(x + 1) * scale, position, (y + 1) * scale])
+        vertices.extend([x, position, y])
+        vertices.extend([(x + 1), position, y])
+        vertices.extend([(x + 1), position, (y + 1)])
 
-        vertices.extend([x * scale, position, y * scale])
-        vertices.extend([(x + 1) * scale, position, (y + 1) * scale])
-        vertices.extend([x * scale, position, (y + 1) * scale])
+        vertices.extend([x, position, y])
+        vertices.extend([(x + 1), position, (y + 1)])
+        vertices.extend([x, position, (y + 1)])
 
-    def front(x: float, y: float, z: float, scale: float, normal_direction: float):
+    def front(x: float, y: float, z: float, normal_direction: float):
         add_quad_to_index()
 
         normal = [0, 0, normal_direction]
         for _ in range(6):
             normals.extend(normal)
 
-        vertices.extend([x * scale, y * scale, z * scale])
-        vertices.extend([(x + 1) * scale, y * scale, z * scale])
-        vertices.extend([(x + 1) * scale, (y + 1) * scale, z * scale])
+        vertices.extend([x, y, z])
+        vertices.extend([(x + 1), y, z])
+        vertices.extend([(x + 1), (y + 1), z])
 
-        vertices.extend([x * scale, y * scale, z * scale])
-        vertices.extend([(x + 1) * scale, (y + 1) * scale, z * scale])
-        vertices.extend([x * scale, (y + 1) * scale, z * scale])
+        vertices.extend([x, y, z])
+        vertices.extend([(x + 1), (y + 1), z])
+        vertices.extend([x, (y + 1), z])
 
-    def left(x: float, y: float, z: float, scale: float, normal_direction: float):
+        if normal_direction == 1:
+            box = BoundingBox()
+            box.normals = cube_normals.copy()
+            position = vec3(x, y, z - normal_direction)
+            box.vertices = list(map(lambda v: v + position, cube_vertices.copy()))
+            offset = vec3(0.5, 0, 0.5)
+            model = cube(5, (position + offset) * 10, vec3(1, 1, 1))
+            model.asset.model_matrix = model.model_matrix
+            box.asset = model.asset
+            bounding_boxes.append(box)
+        # else:
+        #     box = BoundingBox()
+        #     box.normals = cube_normals.copy()
+        #     position = vec3(x, y + 1, z+normal_direction)
+        #     box.vertices = list(map(lambda v: v + position, cube_vertices.copy()))
+        #     bounding_boxes.append(box)
+
+    def left(x: float, y: float, z: float, normal_direction: float):
         add_quad_to_index()
 
         normal = [normal_direction, 0, 0]
         for _ in range(6):
             normals.extend(normal)
 
-        vertices.extend([x * scale, y * scale, z * scale])
-        vertices.extend([x * scale, y * scale, (z + 1) * scale])
-        vertices.extend([x * scale, (y + 1) * scale, (z + 1) * scale])
+        vertices.extend([x, y, z])
+        vertices.extend([x, y, (z + 1)])
+        vertices.extend([x, (y + 1), (z + 1)])
 
-        vertices.extend([x * scale, y * scale, z * scale])
-        vertices.extend([x * scale, (y + 1) * scale, (z + 1) * scale])
-        vertices.extend([x * scale, (y + 1) * scale, z * scale])
+        vertices.extend([x, y, z])
+        vertices.extend([x, (y + 1), (z + 1)])
+        vertices.extend([x, (y + 1), z])
 
     for row in range(arr.shape[1]):
         for col in range(arr.shape[0]):
             color = arr[row, col]
             if color == 255:
-                s = 10
-                floor(col, row, -1, 10, s)
-                floor(col, row, 1, 0, s)
+                floor(col, row, -1, 1)
+                floor(col, row, 1, 0)
 
                 if arr[row + 1, col] != 255:
-                    front(col, 0, row + 1, s, -1)
+                    front(col, 0, row + 1, -1)
                 if arr[row - 1, col] != 255:
-                    front(col, 0, row, s, 1)
+                    front(col, 0, row, 1)
 
                 if arr[row, col - 1] != 255:
-                    left(col, 0, row, s, 1)
+                    left(col, 0, row, 1)
                 if arr[row, col + 1] != 255:
-                    left(col + 1, 0, row, s, -1)
+                    left(col + 1, 0, row, -1)
+
+    # x, y, z = 0, 0, 0
+    # box = BoundingBox()
+    # box.normals = cube_normals.copy()
+    # position = vec3(x, y - 0.5, z - 1)
+    # box.vertices = list(map(lambda v: v + position, cube_vertices.copy()))
+    # bounding_boxes.append(box)
+    # x, y, z = 1, 0, 0
+    # box = BoundingBox()
+    # box.normals = cube_normals.copy()
+    # position = vec3(x, y - 0.5, z - 1)
+    # box.vertices = list(map(lambda v: v + position, cube_vertices.copy()))
+    # bounding_boxes.append(box)
 
     return vertices, normals, indices, bounding_boxes
 
@@ -110,8 +149,13 @@ def labyrinth():
     image_array = load_image("labyrinth.png")
     vertices, normals, indices, bounding_boxes = generate_vertices(image_array)
     asset.vertex_data = combine_attributes(len(vertices) // 3, (3, vertices), (3, normals))
-    asset.indices = indices
-    asset.draw_count = len(indices)
+
+    index_buffer = IndexBuffer()
+    index_buffer.draw_type = GL_TRIANGLES
+    index_buffer.draw_count = len(indices)
+    index_buffer.indices = indices
+    asset.index_buffers.append(index_buffer)
+
     upload(asset)
 
     add_mvp_uniforms(asset.uniforms)
@@ -122,6 +166,9 @@ def labyrinth():
     model.name = "Labyrinth"
     model.asset = asset
     model.bounding_boxes = bounding_boxes
+    model.scale = 10
+    model.position = vec3(0, -5, 0)
     model.model_matrix = identity()
-    translate(model.model_matrix, vec3(0, -5, 0))
+    scale(model.model_matrix, model.scale)
+    translate(model.model_matrix, model.position)
     return model

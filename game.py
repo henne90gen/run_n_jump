@@ -8,7 +8,7 @@ from cube import cube
 from game_data import GameData
 from labyrinth import labyrinth
 from math_helper import vec2, vec3, identity, rotate, translate
-from systems import RenderSystem, PositionSystem, InputSystem, AccelerationSystem, CollisionSystem, ResetSystem
+from systems import RenderSystem, PositionSystem, InputSystem, AccelerationSystem, CollisionSystem, BoundingBoxRenderSystem
 from text import text2d
 
 
@@ -26,9 +26,9 @@ class Game:
         self.light_direction = vec3(0, -1, 0)
 
         size = 5
-        red = vec3(255, 0, 0)
-        green = vec3(0, 255, 0)
-        blue = vec3(0, 0, 255)
+        red = vec3(1, 0, 0)
+        green = vec3(0, 1, 0)
+        blue = vec3(0, 0, 1)
         self.entities = [
             self.camera,
             cube(size, vec3(size * 5), red),
@@ -37,11 +37,11 @@ class Game:
             # cube(size, vec3(size * 2 + 1, 0), vec3(255, 0, 255)),
             labyrinth(),
             # text2d("", position=vec2(100, 100), font_size=11),
-            # text2d(str(vec3(0, 0, size * 5)), position=vec2(100, 80), font_size=11),
+            text2d(str(vec3(0, 0, size * 5)), position=vec2(100, 80), font_size=11),
         ]
 
         # del self.camera.player
-        # control_index = 2
+        # control_index = 1
         # self.entities[control_index].player = True
         # self.entities[control_index].rotation = vec3()
         # self.entities[control_index].speed = 0.005
@@ -55,7 +55,7 @@ class Game:
             AccelerationSystem(),
             PositionSystem(),
             RenderSystem(),
-            ResetSystem()
+            BoundingBoxRenderSystem()
         ]
 
     def tick(self, game_data: GameData):

@@ -237,7 +237,8 @@ class RenderSystem(System):
             glEnableVertexAttribArray(position)
             glBindAttribLocation(entity.asset.shader.handle, position, bytes(name, "utf-8"))
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.asset.index_buffer_id)
+        if entity.asset.use_index_buffer:
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.asset.index_buffers[entity.asset.current_index_buffer_id].id)
 
         for uniform_name in entity.asset.uniforms:
             data_name = entity.asset.uniforms[uniform_name]
@@ -266,18 +267,18 @@ class RenderSystem(System):
             glBindTexture(GL_TEXTURE_2D, texture_id)
 
         if entity.asset.use_index_buffer:
-            glDrawElements(entity.asset.draw_type, entity.asset.draw_count, GL_UNSIGNED_INT, None)
+            glDrawElements(entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_type, entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count, GL_UNSIGNED_INT, None)
         else:
             glDrawArrays(entity.asset.draw_type, entity.asset.draw_start, entity.asset.draw_count)
 
         entity.asset.shader.unbind()
 
 
-class ResetSystem(System):
+class BoundingBoxRenderSystem(System):
     def __init__(self):
-        super().__init__("Reset", [])
+        super().__init__("BoundingBoxRender", ['bounding_boxes'])
 
     def run(self, game_data: GameData, entity):
-        # if hasattr(entity, 'collided'):
-        #     del entity.collided
-        pass
+        for bounding_box in entity.bounding_boxes:
+            if hasattr(bounding_box, 'asset'):
+                RenderSystem().run(game_data, bounding_box)

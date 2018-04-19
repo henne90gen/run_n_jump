@@ -22,6 +22,17 @@ class Texture:
         self.attributes = {}
 
 
+class IndexBuffer:
+    draw_type = None
+    draw_count = -1
+    id = -1
+
+    def __init__(self):
+        self.indices = []
+        self.id = GLuint()
+        glGenBuffers(1, self.id)
+
+
 class ModelAsset:
     shader = None
     texture = None
@@ -29,13 +40,12 @@ class ModelAsset:
 
     vertex_array_id = -1
     vertex_buffer_id = -1
-    index_buffer_id = -1
+    index_buffers = None
     draw_type = GL_TRIANGLES
     draw_start = 0
     draw_count = -1
 
     vertex_data = None
-    indices = None
 
     attributes = None
     uniforms = None
@@ -45,7 +55,6 @@ class ModelAsset:
         self.color = vec3(1.0, 1.0, 1.0)
 
         self.vertex_data = []
-        self.indices = []
 
         self.attributes = []
         self.uniforms = {}
@@ -56,9 +65,8 @@ class ModelAsset:
         self.vertex_buffer_id = GLuint()
         glGenBuffers(1, self.vertex_buffer_id)
 
-        if self.use_index_buffer:
-            self.index_buffer_id = GLuint()
-            glGenBuffers(1, self.index_buffer_id)
+        self.current_index_buffer_id = 0
+        self.index_buffers = []
 
 
 class BoundingBox:
@@ -115,8 +123,9 @@ def upload(asset: ModelAsset):
 
     if asset.use_index_buffer:
         # noinspection PyCallingNonCallable,PyTypeChecker
-        index_data_gl = (GLint * len(asset.indices))(*asset.indices)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset.index_buffer_id)
+        index_data_gl = (GLint * len(asset.index_buffers[asset.current_index_buffer_id].indices))(
+            *asset.index_buffers[asset.current_index_buffer_id].indices)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset.index_buffers[asset.current_index_buffer_id].id)
         index_buffer_size = sizeof(index_data_gl)
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, GL_STATIC_DRAW)
 
@@ -161,15 +170,31 @@ def load_blender_file(path):
     normals = [vec3() for _ in range(len(vertices) // 3)]
 
     indices = []
+
+    triangle_indices = []
     for face in faces:
         points = face.strip()[2:].split()
         for p in points:
             parts = p.split("/")
             index = int(parts[0]) - 1
-            indices.append(index)
+            triangle_indices.append(index)
             normal_index = int(parts[2]) - 1
             normals[index] += all_normals[normal_index]
 
-    normals = [item for sublist in normals for item in sublist]
+    indices.append((GL_TRIANGLES, triangle_indices))
 
+    line_indices = []
+    for face in faces:
+        points = face.strip()[2:].split()
+        point_indices = []
+        for p in points:
+            parts = p.split("/")
+            index = int(parts[0]) - 1
+            point_indices.append(index)
+        for i in range(len(point_indices)):
+            line_indices.extend([point_indices[i], point_indices[(i + 1) % len(point_indices)]])
+
+    indices.append((GL_LINES, line_indices))
+
+    normals = [item for sublist in normals for item in sublist]
     return vertices, normals, indices, all_normals

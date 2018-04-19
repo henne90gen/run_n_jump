@@ -2,9 +2,9 @@ from ctypes import sizeof, c_float
 
 from pyglet.gl import *
 
-from math_helper import vec3, translate
+from math_helper import vec3, translate, scale
 from model import ModelAsset, load_blender_file, upload, ModelInstance, combine_attributes, add_mvp_uniforms, \
-    add_light_uniforms, BoundingBox
+    add_light_uniforms, BoundingBox, IndexBuffer
 from shader import Shader
 
 
@@ -34,8 +34,15 @@ def cube(size, position: vec3, color: vec3):
     vertices, normals, indices, all_normals = load_blender_file("models/cube.obj")
     vertex_count = len(vertices) // 3
     asset.vertex_data = combine_attributes(vertex_count, (3, vertices), (3, normals))
-    asset.indices = indices
-    asset.draw_count = len(indices)
+
+    for draw_type, values in indices:
+        index_buffer = IndexBuffer()
+        index_buffer.draw_type = draw_type
+        index_buffer.draw_count = len(values)
+        index_buffer.indices = values
+        asset.index_buffers.append(index_buffer)
+
+    asset.current_index_buffer_id = 1
     upload(asset)
 
     add_mvp_uniforms(asset.uniforms)
@@ -45,8 +52,9 @@ def cube(size, position: vec3, color: vec3):
     model = ModelInstance()
     model.name = "Cube" + str(position)
     model.asset = asset
-    model.bounding_boxes = [generate_bounding_box(vertices, all_normals)]
-    model.position = position
-    translate(model.model_matrix, model.position)
+    # model.bounding_boxes = [generate_bounding_box(vertices, all_normals)]
     model.scale = size
+    model.position = position
+    scale(model.model_matrix, model.scale)
+    translate(model.model_matrix, model.position)
     return model
