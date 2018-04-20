@@ -205,6 +205,135 @@ def generate_floor_and_ceiling(arr: np.ndarray, vertices: list, normals: list, i
                 used_pixels.append((row, col))
 
 
+def is_edge(arr, row, col, direction):
+    neighbor_row = row + direction[0]
+    neighbor_col = col + direction[1]
+    return arr[row, col] == 255 and (
+            neighbor_row >= arr.shape[1] or neighbor_col >= arr.shape[0] or
+            neighbor_row == -1 or neighbor_col == -1 or
+            arr[neighbor_row, neighbor_col] != 255)
+
+
+def find_next_edge_pixel(arr: np.ndarray, row, col, offset):
+    while True:
+        if col < arr.shape[0] - 1:
+            col += 1
+        elif row < arr.shape[1] - 1:
+            row += 1
+            col = 0
+        else:
+            return -1, -1
+
+        if is_edge(arr, row, col, offset):
+            return row, col
+
+
+def find_right_end(arr: np.ndarray, row, start_col, direction):
+    for col in range(start_col, arr.shape[0]):
+        if not is_edge(arr, row, col, (direction, 0)):
+            return col
+    return arr.shape[0]
+
+
+def add_vertical_plane_x_y(vertices, normals, indices, normal_direction, row, start_col, end_col):
+    index = len(indices)
+    indices.extend([index, index + 1, index + 2, index + 3, index + 4, index + 5])
+
+    normal = [0, 0, normal_direction]
+    for _ in range(6):
+        normals.extend(normal)
+
+    vertices.extend([start_col, -1, row])
+    vertices.extend([end_col, -1, row])
+    vertices.extend([end_col, 1, row])
+
+    vertices.extend([start_col, -1, row])
+    vertices.extend([end_col, 1, row])
+    vertices.extend([start_col, 1, row])
+
+
+def generate_horizontal_wall(arr: np.ndarray, vertices, normals, indices, direction):
+    cur_row = 0
+    cur_col = -1
+    used_pixels = []
+    while True:
+        cur_row, cur_col = find_next_edge_pixel(arr, cur_row, cur_col, (direction, 0))
+        if (cur_row, cur_col) in used_pixels:
+            continue
+        if cur_row == -1 or cur_col == -1:
+            break
+        end_col = find_right_end(arr, cur_row, cur_col, direction)
+        if direction == 1:
+            # offset for the back wall
+            row = cur_row + 1
+        else:
+            row = cur_row
+        add_vertical_plane_x_y(vertices, normals, indices, direction * -1, row, cur_col, end_col)
+        for col in range(cur_col, end_col):
+            used_pixels.append((cur_row, col))
+
+
+def generate_back(arr, vertices, normals, indices):
+    generate_horizontal_wall(arr, vertices, normals, indices, 1)
+
+
+def generate_front(arr, vertices, normals, indices):
+    generate_horizontal_wall(arr, vertices, normals, indices, -1)
+
+
+def find_bottom_end(arr: np.ndarray, start_row, col, direction):
+    for row in range(start_row, arr.shape[1]):
+        if not is_edge(arr, row, col, (0, direction)):
+            return row
+    return arr.shape[1]
+
+
+def add_vertical_plane_z_y(vertices, normals, indices, normal_direction, start_row, end_row, col):
+    index = len(indices)
+    indices.extend([index, index + 1, index + 2, index + 3, index + 4, index + 5])
+
+    normal = [normal_direction, 0, 0]
+    for _ in range(6):
+        normals.extend(normal)
+
+    vertices.extend([col, -1, start_row])
+    vertices.extend([col, -1, end_row])
+    vertices.extend([col, 1, end_row])
+
+    vertices.extend([col, -1, start_row])
+    vertices.extend([col, 1, end_row])
+    vertices.extend([col, 1, start_row])
+
+
+def generate_vertical_wall(arr, vertices, normals, indices, direction):
+    cur_row = 0
+    cur_col = -1
+    used_pixels = []
+    while True:
+        cur_row, cur_col = find_next_edge_pixel(arr, cur_row, cur_col, (0, direction))
+        if (cur_row, cur_col) in used_pixels:
+            continue
+        if cur_row == -1 or cur_col == -1:
+            break
+        end_row = find_bottom_end(arr, cur_row, cur_col, direction)
+        if direction == 1:
+            # offset for the right wall
+            col = cur_col + 1
+        else:
+            col = cur_col
+        add_vertical_plane_z_y(vertices, normals, indices, direction * -1, cur_row, end_row, col)
+        for row in range(cur_row, end_row):
+            used_pixels.append((row, cur_col))
+
+
+def generate_left(arr, vertices, normals, indices):
+    generate_vertical_wall(arr, vertices, normals, indices, -1)
+
+
+def generate_right(arr, vertices, normals, indices):
+    generate_vertical_wall(arr, vertices, normals, indices, 1)
+
+
 def generate_vertices_efficient(arr: np.ndarray):
     vertices = []
     normals = []
@@ -213,16 +342,11 @@ def generate_vertices_efficient(arr: np.ndarray):
 
     generate_floor_and_ceiling(arr, vertices, normals, indices)
 
-    def find_next_corner(arr: np.ndarray, corner):
-        if arr[corner] != 255:
-            corner = find_next_black_pixel(arr, *corner)
-        print(corner)
-        return corner
+    generate_front(arr, vertices, normals, indices)
+    generate_back(arr, vertices, normals, indices)
 
-    cur_corner = (0, -1)
-    while True:
-        corner = find_next_corner(arr, cur_corner)
-        break
+    generate_left(arr, vertices, normals, indices)
+    generate_right(arr, vertices, normals, indices)
 
     return vertices, normals, [(GL_TRIANGLES, indices), (GL_LINES, get_line_indices(indices))], bounding_boxes
 
