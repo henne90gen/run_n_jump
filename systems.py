@@ -1,5 +1,4 @@
 import logging
-import math
 
 from pyglet.gl import *
 
@@ -28,7 +27,7 @@ class System:
                 return False
         return True
 
-    def reset(self):
+    def reset(self, game_data: GameData):
         pass
 
     def run(self, game_data: GameData, entity):
@@ -43,11 +42,26 @@ class System:
 
 class InputSystem(System):
     def __init__(self):
-        super().__init__("Input", ['player', 'acceleration', 'rotation', 'velocity'], ['speed'])
+        super().__init__("Input", ['asset'], ['current_index_buffer_id', 'index_buffers'])
 
     def run(self, game_data: GameData, entity):
-        # if pyglet.window.key.E in game_data.key_map and game_data.key_map[pyglet.window.key.E]:
+        if pyglet.window.key.SPACE in game_data.key_map and game_data.key_map[pyglet.window.key.SPACE]:
+            if hasattr(entity.asset, 'current_index_buffer_id') and hasattr(entity.asset, 'index_buffers'):
+                if len(entity.asset.index_buffers) == 0:
+                    return
+                entity.asset.current_index_buffer_id = (entity.asset.current_index_buffer_id + 1) % len(
+                    entity.asset.index_buffers)
 
+    def reset(self, game_data: GameData):
+        if pyglet.window.key.SPACE in game_data.key_map:
+            del game_data.key_map[pyglet.window.key.SPACE]
+
+
+class MovementInputSystem(System):
+    def __init__(self):
+        super().__init__("MovementInput", ['player', 'acceleration', 'rotation', 'velocity'], ['speed'])
+
+    def run(self, game_data: GameData, entity):
         if game_data.mouse_movement.x != 0 or game_data.mouse_movement.y != 0:
             scale_factor = game_data.frame_time * 100 * game_data.sensitivity
             entity.rotation.x -= game_data.mouse_movement.y * scale_factor
@@ -233,7 +247,7 @@ class RenderSystem(System):
         super().__init__("Render", ['asset'])
         self.render_calls = 0
 
-    def reset(self):
+    def reset(self, game_data: GameData):
         self.log.debug(f"{self.render_calls} render calls")
         self.render_calls = 0
 

@@ -42,7 +42,6 @@ def cube(size, position: vec3, color: vec3):
         index_buffer.indices = values
         asset.index_buffers.append(index_buffer)
 
-    asset.current_index_buffer_id = 1
     upload(asset)
 
     add_mvp_uniforms(asset.uniforms)

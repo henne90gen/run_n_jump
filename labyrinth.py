@@ -5,9 +5,9 @@ from PIL import Image
 from pyglet.gl import *
 
 from cube import cube
-from math_helper import identity, vec3, translate, scale
+from math_helper import identity, vec3, translate, scale, vec2
 from model import ModelAsset, ModelInstance, upload, combine_attributes, add_mvp_uniforms, add_light_uniforms, \
-    BoundingBox, IndexBuffer
+    BoundingBox, IndexBuffer, get_line_indices
 from shader import Shader
 
 
@@ -127,7 +127,104 @@ def generate_vertices(arr: np.ndarray):
     # box.vertices = list(map(lambda v: v + position, cube_vertices.copy()))
     # bounding_boxes.append(box)
 
-    return vertices, normals, indices, bounding_boxes
+    return vertices, normals, [(GL_TRIANGLES, indices), (GL_LINES, get_line_indices(indices))], bounding_boxes
+
+
+def find_next_black_pixel(arr: np.ndarray, row: int, col: int):
+    while True:
+        if col < arr.shape[0] - 1:
+            col += 1
+        elif row < arr.shape[1] - 1:
+            row += 1
+            col = 0
+        else:
+            return -1, -1
+
+        if arr[row, col] == 255:
+            return row, col
+
+
+def find_bottom_edge(arr: np.ndarray, start_row: int, col: int):
+    for row in range(start_row, arr.shape[1]):
+        if arr[row, col] != 255:
+            return row - 1
+    return arr.shape[1] - 1
+
+
+def find_right_edge(arr: np.ndarray, used_pixels: list, start_row, end_row, start_col):
+    for col in range(start_col, arr.shape[0]):
+        for row in range(start_row, end_row + 1):
+            if arr[row, col] != 255 or (row, col) in used_pixels:
+                return col - 1
+    return arr.shape[0] - 1
+
+
+def add_horizontal_plane(vertices, normals, indices, normal_direction, start: vec2, end: vec2):
+    index = len(indices)
+    indices.extend([index, index + 1, index + 2, index + 3, index + 4, index + 5])
+
+    normal = [0, normal_direction, 0]
+    for _ in range(6):
+        normals.extend(normal)
+
+    end += vec2(1, 1)
+    normal_direction *= -1
+    vertices.extend([start.x, normal_direction, start.y])
+    vertices.extend([end.x, normal_direction, start.y])
+    vertices.extend([end.x, normal_direction, end.y])
+
+    vertices.extend([start.x, normal_direction, start.y])
+    vertices.extend([end.x, normal_direction, end.y])
+    vertices.extend([start.x, normal_direction, end.y])
+
+
+def add_floor(vertices, normals, indices, start, end):
+    add_horizontal_plane(vertices, normals, indices, -1, start, end)
+
+
+def add_ceiling(vertices, normals, indices, start, end):
+    add_horizontal_plane(vertices, normals, indices, 1, start, end)
+
+
+def generate_floor_and_ceiling(arr: np.ndarray, vertices: list, normals: list, indices: list):
+    cur_row = 0
+    cur_col = -1
+    used_pixels = []
+    while True:
+        cur_row, cur_col = find_next_black_pixel(arr, cur_row, cur_col)
+        if (cur_row, cur_col) in used_pixels:
+            continue
+        if cur_row == -1 or cur_col == -1:
+            break
+        end_row = find_bottom_edge(arr, cur_row, cur_col)
+        end_col = find_right_edge(arr, used_pixels, cur_row, end_row, cur_col)
+        add_floor(vertices, normals, indices, vec2(cur_col, cur_row), vec2(end_col, end_row))
+        add_ceiling(vertices, normals, indices, vec2(cur_col, cur_row), vec2(end_col, end_row))
+        for row in range(cur_row, end_row + 1):
+            for col in range(cur_col, end_col + 1):
+                used_pixels.append((row, col))
+
+
+def generate_vertices_efficient(arr: np.ndarray):
+    vertices = []
+    normals = []
+    indices = []
+    bounding_boxes = []
+
+    generate_floor_and_ceiling(arr, vertices, normals, indices)
+
+    def find_next_corner(arr: np.ndarray, corner):
+        if arr[corner] != 255:
+            corner = find_next_black_pixel(arr, *corner)
+        print(corner)
+        return corner
+
+    cur_corner = (0, -1)
+    while True:
+        corner = find_next_corner(arr, cur_corner)
+        break
+
+    return vertices, normals, [(GL_TRIANGLES, indices), (GL_LINES, get_line_indices(indices))], bounding_boxes
 
 
 def labyrinth():
@@ -141,14 +238,15 @@ def labyrinth():
     asset.attributes = attributes
 
     image_array = load_image("labyrinth.png")
-    vertices, normals, indices, bounding_boxes = generate_vertices(image_array)
+    vertices, normals, indices, bounding_boxes = generate_vertices_efficient(image_array)
     asset.vertex_data = combine_attributes(len(vertices) // 3, (3, vertices), (3, normals))
 
-    index_buffer = IndexBuffer()
-    index_buffer.draw_type = GL_TRIANGLES
-    index_buffer.draw_count = len(indices)
-    index_buffer.indices = indices
-    asset.index_buffers.append(index_buffer)
+    for draw_type, values in indices:
+        index_buffer = IndexBuffer()
+        index_buffer.draw_type = draw_type
+        index_buffer.draw_count = len(values)
+        index_buffer.indices = values
+        asset.index_buffers.append(index_buffer)
 
     upload(asset)
 
@@ -160,8 +258,10 @@ def labyrinth():
     model.name = "Labyrinth"
     model.asset = asset
     model.bounding_boxes = bounding_boxes
-    model.scale = 10
-    model.position = vec3(0, -5, 0)
+    # model.scale = 10
+    # model.position = vec3(0, -5, 0)
+    model.scale = 5
+    model.position = vec3(0, 0, 0)
     model.model_matrix = identity()
     scale(model.model_matrix, model.scale)
     translate(model.model_matrix, model.position)

@@ -41,6 +41,7 @@ class ModelAsset:
     vertex_array_id = -1
     vertex_buffer_id = -1
     index_buffers = None
+    current_index_buffer_id = -1
     draw_type = GL_TRIANGLES
     draw_start = 0
     draw_count = -1
@@ -122,12 +123,12 @@ def upload(asset: ModelAsset):
     glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertex_data_gl, GL_STATIC_DRAW)
 
     if asset.use_index_buffer:
-        # noinspection PyCallingNonCallable,PyTypeChecker
-        index_data_gl = (GLint * len(asset.index_buffers[asset.current_index_buffer_id].indices))(
-            *asset.index_buffers[asset.current_index_buffer_id].indices)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, asset.index_buffers[asset.current_index_buffer_id].id)
-        index_buffer_size = sizeof(index_data_gl)
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, GL_STATIC_DRAW)
+        for buffer in asset.index_buffers:
+            # noinspection PyCallingNonCallable,PyTypeChecker
+            index_data_gl = (GLint * len(buffer.indices))(*buffer.indices)
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.id)
+            index_buffer_size = sizeof(index_data_gl)
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, GL_STATIC_DRAW)
 
     if asset.texture is not None:
         glBindTexture(GL_TEXTURE_2D, asset.texture.id)
@@ -182,19 +183,18 @@ def load_blender_file(path):
             normals[index] += all_normals[normal_index]
 
     indices.append((GL_TRIANGLES, triangle_indices))
-
-    line_indices = []
-    for face in faces:
-        points = face.strip()[2:].split()
-        point_indices = []
-        for p in points:
-            parts = p.split("/")
-            index = int(parts[0]) - 1
-            point_indices.append(index)
-        for i in range(len(point_indices)):
-            line_indices.extend([point_indices[i], point_indices[(i + 1) % len(point_indices)]])
-
-    indices.append((GL_LINES, line_indices))
+    indices.append((GL_LINES, get_line_indices(triangle_indices)))
 
     normals = [item for sublist in normals for item in sublist]
     return vertices, normals, indices, all_normals
+
+
+def get_line_indices(triangle_indices):
+    indices = []
+    for i in range(0, len(triangle_indices), 3):
+        indices.extend([
+            triangle_indices[i], triangle_indices[i + 1],
+            triangle_indices[i + 1], triangle_indices[i + 2],
+            triangle_indices[i + 2], triangle_indices[i],
+        ])
+    return indices

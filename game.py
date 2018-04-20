@@ -8,7 +8,7 @@ from cube import cube
 from game_data import GameData
 from labyrinth import labyrinth
 from math_helper import vec2, vec3, identity, rotate, translate
-from systems import RenderSystem, PositionSystem, InputSystem, AccelerationSystem, CollisionSystem, \
+from systems import RenderSystem, PositionSystem, InputSystem, MovementInputSystem, AccelerationSystem, CollisionSystem, \
     BoundingBoxRenderSystem
 from text import text2d
 
@@ -52,6 +52,7 @@ class Game:
 
         self.systems = {
             "input": InputSystem(),
+            "movement_input": MovementInputSystem(),
             "collision": CollisionSystem(),
             "acceleration": AccelerationSystem(),
             "position": PositionSystem(),
@@ -76,7 +77,7 @@ class Game:
                 if system.supports(entity):
                     self.log.debug(f"Running system {system} on entity {entity}")
                     system.run(game_data, entity)
-            system.reset()
+            system.reset(game_data)
 
     def handle_key(self, symbol, modifiers, pressed):
         released = not pressed
