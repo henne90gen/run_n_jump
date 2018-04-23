@@ -18,7 +18,7 @@ class Game:
         self.log = logging_config.getLogger(__name__)
         self.log.setLevel(logging.INFO)
 
-        camera_position = vec3(10, 0, 10)
+        camera_position = vec3(5, 0, 5)
         camera_angle = vec2(0, 120)
         self.camera = Camera(camera_position, camera_angle)
 
@@ -40,15 +40,6 @@ class Game:
             # text2d("", position=vec2(100, 100), font_size=11),
             text2d(str(vec3(0, 0, size * 5)), position=vec2(100, 80), font_size=11),
         ]
-
-        # del self.camera.player
-        # control_index = 1
-        # self.entities[control_index].player = True
-        # self.entities[control_index].rotation = vec3()
-        # self.entities[control_index].speed = 0.005
-        # self.entities[control_index].max_speed = 0.05
-        # self.entities[control_index].velocity = vec3()
-        # self.entities[control_index].acceleration = vec3()
 
         self.systems = {
             "input": InputSystem(),

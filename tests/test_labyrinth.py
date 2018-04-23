@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 
-from labyrinth import generate_vertices_efficient
+from labyrinth import generate_vertices
 
 
 class LabyrinthTest(unittest.TestCase):
@@ -21,4 +21,4 @@ class LabyrinthTest(unittest.TestCase):
         arr[4, 1] = 255
         for row in range(arr.shape[1]):
             print(arr[row])
-        generate_vertices_efficient(arr)
+        generate_vertices(arr)

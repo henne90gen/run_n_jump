@@ -9,6 +9,8 @@ def camera_bounding_box():
         vec3(1.0, 1.0, -1.0), vec3(1.0, 1.0, 1.0), vec3(-1.0, 1.0, 1.0), vec3(-1.0, 1.0, -1.0)
     ]
     box.normals = [vec3(1.0), vec3(0.0, 1.0), vec3(0.0, 0.0, 1.0)]
+    box.type = 'dynamic'
+    box.radius = max(map(lambda v: v.length, box.vertices))
     return box
 
 
@@ -17,6 +19,7 @@ class Camera:
         self.model_matrix = identity()
         self.position = position
         self.rotation = vec3(angle.x, angle.y, 0)
+        self.scale = 1
         self.velocity = vec3()
         self.acceleration = vec3()
         self.player = True

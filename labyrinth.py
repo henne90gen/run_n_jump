@@ -4,11 +4,13 @@ import numpy as np
 from PIL import Image
 from pyglet.gl import *
 
-from cube import cube
 from math_helper import identity, vec3, translate, scale, vec2
 from model import ModelAsset, ModelInstance, upload, combine_attributes, add_mvp_uniforms, add_light_uniforms, \
     BoundingBox, IndexBuffer, get_line_indices
+from rectangle import rectangular_prism
 from shader import Shader
+
+LABYRINTH_SCALE = 5
 
 
 def load_image(filename: str):
@@ -21,113 +23,6 @@ def load_image(filename: str):
         for col in range(1, width * 2, 2):
             map_array[row, (col - 1) // 2] = image_array[row * width * 2 + col]
     return map_array
-
-
-def generate_vertices(arr: np.ndarray):
-    cube_normals = [vec3(1), vec3(-1), vec3(0, 1), vec3(0, -1), vec3(0, 0, 1), vec3(0, 0, -1)]
-    cube_vertices = [
-        vec3(1, 1, 1), vec3(0, 1, 1),
-        vec3(1, 0, 1), vec3(1, 1, 0),
-        vec3(1, 0, 0), vec3(0, 1, 0),
-        vec3(0, 0, 1), vec3(0, 0, 0)
-    ]
-
-    vertices = []
-    normals = []
-    indices = []
-    bounding_boxes = []
-
-    def add_quad_to_index():
-        index = len(indices)
-        indices.extend([index, index + 1, index + 2, index + 3, index + 4, index + 5])
-
-    def floor(x: float, y: float, normal_direction: float, position: float):
-        add_quad_to_index()
-
-        normal = [0, normal_direction, 0]
-        for _ in range(6):
-            normals.extend(normal)
-
-        vertices.extend([x, position, y])
-        vertices.extend([(x + 1), position, y])
-        vertices.extend([(x + 1), position, (y + 1)])
-
-        vertices.extend([x, position, y])
-        vertices.extend([(x + 1), position, (y + 1)])
-        vertices.extend([x, position, (y + 1)])
-
-    def front(x: float, y: float, z: float, normal_direction: float):
-        add_quad_to_index()
-
-        normal = [0, 0, normal_direction]
-        for _ in range(6):
-            normals.extend(normal)
-
-        vertices.extend([x, y, z])
-        vertices.extend([(x + 1), y, z])
-        vertices.extend([(x + 1), (y + 1), z])
-
-        vertices.extend([x, y, z])
-        vertices.extend([(x + 1), (y + 1), z])
-        vertices.extend([x, (y + 1), z])
-
-        if normal_direction == 1:
-            box = BoundingBox()
-            box.normals = cube_normals.copy()
-            position = vec3(x, y, z - normal_direction)
-            box.vertices = list(map(lambda v: v + position, cube_vertices.copy()))
-            offset = vec3(0.5, 0, 0.5)
-            model = cube(5, (position + offset) * 10, vec3(1, 1, 1))
-            model.asset.model_matrix = model.model_matrix
-            box.asset = model.asset
-            bounding_boxes.append(box)
-
-    def left(x: float, y: float, z: float, normal_direction: float):
-        add_quad_to_index()
-
-        normal = [normal_direction, 0, 0]
-        for _ in range(6):
-            normals.extend(normal)
-
-        vertices.extend([x, y, z])
-        vertices.extend([x, y, (z + 1)])
-        vertices.extend([x, (y + 1), (z + 1)])
-
-        vertices.extend([x, y, z])
-        vertices.extend([x, (y + 1), (z + 1)])
-        vertices.extend([x, (y + 1), z])
-
-    for row in range(arr.shape[1]):
-        for col in range(arr.shape[0]):
-            color = arr[row, col]
-            if color == 255:
-                floor(col, row, -1, 1)
-                floor(col, row, 1, 0)
-
-                if arr[row + 1, col] != 255:
-                    front(col, 0, row + 1, -1)
-                if arr[row - 1, col] != 255:
-                    front(col, 0, row, 1)
-
-                if arr[row, col - 1] != 255:
-                    left(col, 0, row, 1)
-                if arr[row, col + 1] != 255:
-                    left(col + 1, 0, row, -1)
-
-    # x, y, z = 0, 0, 0
-    # box = BoundingBox()
-    # box.normals = cube_normals.copy()
-    # position = vec3(x, y - 0.5, z - 1)
-    # box.vertices = list(map(lambda v: v + position, cube_vertices.copy()))
-    # bounding_boxes.append(box)
-    # x, y, z = 1, 0, 0
-    # box = BoundingBox()
-    # box.normals = cube_normals.copy()
-    # position = vec3(x, y - 0.5, z - 1)
-    # box.vertices = list(map(lambda v: v + position, cube_vertices.copy()))
-    # bounding_boxes.append(box)
-
-    return vertices, normals, [(GL_TRIANGLES, indices), (GL_LINES, get_line_indices(indices))], bounding_boxes
 
 
 def find_next_black_pixel(arr: np.ndarray, row: int, col: int):
@@ -252,7 +147,7 @@ def add_vertical_plane_x_y(vertices, normals, indices, normal_direction, row, st
     vertices.extend([start_col, 1, row])
 
 
-def generate_horizontal_wall(arr: np.ndarray, vertices, normals, indices, direction):
+def generate_horizontal_wall(arr: np.ndarray, vertices, normals, indices, bounding_boxes, direction):
     cur_row = 0
     cur_col = -1
     used_pixels = []
@@ -269,16 +164,23 @@ def generate_horizontal_wall(arr: np.ndarray, vertices, normals, indices, direct
         else:
             row = cur_row
         add_vertical_plane_x_y(vertices, normals, indices, direction * -1, row, cur_col, end_col)
+
+        width = (end_col - cur_col) / 2
+        size = vec3(width, 1, 0.5)
+        position = vec3(width + cur_col, 0, row + direction * 0.5)
+        bounding_box = generate_bounding_box(size, position)
+        bounding_boxes.append(bounding_box)
+
         for col in range(cur_col, end_col):
             used_pixels.append((cur_row, col))
 
 
-def generate_back(arr, vertices, normals, indices):
-    generate_horizontal_wall(arr, vertices, normals, indices, 1)
+def generate_back(arr, vertices, normals, indices, bounding_boxes):
+    generate_horizontal_wall(arr, vertices, normals, indices, bounding_boxes, 1)
 
 
-def generate_front(arr, vertices, normals, indices):
-    generate_horizontal_wall(arr, vertices, normals, indices, -1)
+def generate_front(arr, vertices, normals, indices, bounding_boxes):
+    generate_horizontal_wall(arr, vertices, normals, indices, bounding_boxes, -1)
 
 
 def find_bottom_end(arr: np.ndarray, start_row, col, direction):
@@ -305,7 +207,7 @@ def add_vertical_plane_z_y(vertices, normals, indices, normal_direction, start_r
     vertices.extend([col, 1, start_row])
 
 
-def generate_vertical_wall(arr, vertices, normals, indices, direction):
+def generate_vertical_wall(arr, vertices, normals, indices, bounding_boxes, direction):
     cur_row = 0
     cur_col = -1
     used_pixels = []
@@ -322,19 +224,47 @@ def generate_vertical_wall(arr, vertices, normals, indices, direction):
         else:
             col = cur_col
         add_vertical_plane_z_y(vertices, normals, indices, direction * -1, cur_row, end_row, col)
+
+        height = (end_row - cur_row) / 2
+        size = vec3(0.5, 1, height)
+        position = vec3(col + direction * 0.5, 0, height + cur_row)
+        bounding_box = generate_bounding_box(size, position)
+        bounding_boxes.append(bounding_box)
+
         for row in range(cur_row, end_row):
             used_pixels.append((row, cur_col))
 
 
-def generate_left(arr, vertices, normals, indices):
-    generate_vertical_wall(arr, vertices, normals, indices, -1)
+def generate_left(arr, vertices, normals, indices, bounding_boxes):
+    generate_vertical_wall(arr, vertices, normals, indices, bounding_boxes, -1)
 
 
-def generate_right(arr, vertices, normals, indices):
-    generate_vertical_wall(arr, vertices, normals, indices, 1)
+def generate_right(arr, vertices, normals, indices, bounding_boxes):
+    generate_vertical_wall(arr, vertices, normals, indices, bounding_boxes, 1)
 
 
-def generate_vertices_efficient(arr: np.ndarray):
+def generate_bounding_box(size: vec3, position: vec3):
+    box = BoundingBox()
+    asset, vertices, normals = rectangular_prism(size, vec3(1, 0, 1))
+    asset.current_index_buffer_id = 1
+
+    def convert_to_vec3(arr: list):
+        result = []
+        for i in range(0, len(arr), 3):
+            vector = vec3(arr[i], arr[i + 1], arr[i + 2])
+            if vector not in result:
+                result.append(vector)
+        return result
+
+    box.vertices = convert_to_vec3(vertices)
+    box.normals = convert_to_vec3(normals)
+    box.position = position
+    box.radius = max(map(lambda v: v.length, box.vertices))
+    box.asset = asset
+    return box
+
+
+def generate_vertices(arr: np.ndarray):
     vertices = []
     normals = []
     indices = []
@@ -342,11 +272,11 @@ def generate_vertices_efficient(arr: np.ndarray):
 
     generate_floor_and_ceiling(arr, vertices, normals, indices)
 
-    generate_front(arr, vertices, normals, indices)
-    generate_back(arr, vertices, normals, indices)
+    generate_front(arr, vertices, normals, indices, bounding_boxes)
+    generate_back(arr, vertices, normals, indices, bounding_boxes)
 
-    generate_left(arr, vertices, normals, indices)
-    generate_right(arr, vertices, normals, indices)
+    generate_left(arr, vertices, normals, indices, bounding_boxes)
+    generate_right(arr, vertices, normals, indices, bounding_boxes)
 
     return vertices, normals, [(GL_TRIANGLES, indices), (GL_LINES, get_line_indices(indices))], bounding_boxes
 
@@ -362,7 +292,7 @@ def labyrinth():
     asset.attributes = attributes
 
     image_array = load_image("labyrinth.png")
-    vertices, normals, indices, bounding_boxes = generate_vertices_efficient(image_array)
+    vertices, normals, indices, bounding_boxes = generate_vertices(image_array)
     asset.vertex_data = combine_attributes(len(vertices) // 3, (3, vertices), (3, normals))
 
     for draw_type, values in indices:
@@ -382,9 +312,7 @@ def labyrinth():
     model.name = "Labyrinth"
     model.asset = asset
     model.bounding_boxes = bounding_boxes
-    # model.scale = 10
-    # model.position = vec3(0, -5, 0)
-    model.scale = 5
+    model.scale = LABYRINTH_SCALE
     model.position = vec3(0, 0, 0)
     model.model_matrix = identity()
     scale(model.model_matrix, model.scale)

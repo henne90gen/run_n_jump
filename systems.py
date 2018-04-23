@@ -130,13 +130,15 @@ class AccelerationSystem(System):
 class CollisionSystem(System):
     def __init__(self):
         super().__init__("Collision", ['model_matrix', 'bounding_boxes'])
+        self.loop_counter = 0
+        self.collision_counter = 0
 
     @staticmethod
-    def project(box: BoundingBox, model_matrix: mat4, normal: vec3):
+    def project(box: BoundingBox, normal: vec3):
         min_box = None
         max_box = None
         for vertex in box.vertices:
-            projection = dot(model_matrix * vertex, normal)
+            projection = dot(box.model_matrix * vertex, normal)
             if min_box is None or min_box > projection:
                 min_box = projection
             if max_box is None or max_box < projection:
@@ -156,14 +158,13 @@ class CollisionSystem(System):
         return 0
 
     @staticmethod
-    def check_for_overlap(normals: list, box: BoundingBox, box_model_matrix: mat4, other: BoundingBox,
-                          other_model_matrix: mat4):
+    def check_for_overlap(normals: list, rotation_matrix: mat4, box: BoundingBox, other: BoundingBox):
         minimum_overlap = None
         overlap_normal = None
         for normal in normals:
-            normal = normal.copy().normalize()
-            min_box, max_box = CollisionSystem.project(box, box_model_matrix, normal)
-            min_other, max_other = CollisionSystem.project(other, other_model_matrix, normal)
+            normal = (rotation_matrix * normal.copy()).normalize()
+            min_box, max_box = CollisionSystem.project(box, normal)
+            min_other, max_other = CollisionSystem.project(other, normal)
             if max_box < min_other and max_box < max_other:
                 return None, None
             elif min_box > min_other and min_box > max_other:
@@ -177,18 +178,61 @@ class CollisionSystem(System):
         return minimum_overlap, overlap_normal
 
     @staticmethod
-    def collides(box: BoundingBox, box_model_matrix: mat4, other: BoundingBox, other_model_matrix: mat4):
-        minimum_overlap, overlap_normal = CollisionSystem.check_for_overlap(box.normals, box, box_model_matrix, other,
-                                                                            other_model_matrix)
+    def collides(box: BoundingBox, box_rotation_matrix: mat4, other: BoundingBox, other_rotation_matrix: mat4):
+        minimum_overlap, overlap_normal = CollisionSystem.check_for_overlap(box.normals, box_rotation_matrix, box,
+                                                                            other)
         if minimum_overlap is None or overlap_normal is None:
             return False, None
 
-        minimum_overlap, overlap_normal = CollisionSystem.check_for_overlap(other.normals, box, box_model_matrix, other,
-                                                                            other_model_matrix)
+        minimum_overlap, overlap_normal = CollisionSystem.check_for_overlap(other.normals, other_rotation_matrix, box,
+                                                                            other)
         if minimum_overlap is None or overlap_normal is None:
             return False, None
 
         return True, overlap_normal * (minimum_overlap + 0.000000000000001)
+
+    @staticmethod
+    def no_collision_possible(entity, other, box, other_box):
+        if box.type == 'static':
+            return True
+
+        if hasattr(box, 'radius') and hasattr(other_box, 'radius'):
+            box_pos = box.model_matrix * vec3()
+            other_pos = other_box.model_matrix * vec3()
+            diff = box_pos - other_pos
+            if diff.length > box.radius * entity.scale + other_box.radius * other.scale:
+                return True
+        return False
+
+    def do_collision_check(self, entity, other, box, other_box):
+        entity_rotation_matrix = identity()
+        if hasattr(entity, 'rotation'):
+            rotate(entity_rotation_matrix, entity.rotation)
+        other_rotation_matrix = identity()
+        if hasattr(other, 'rotation'):
+            rotate(other_rotation_matrix, other.rotation)
+
+        collides, overlap = self.collides(
+            box, entity_rotation_matrix,
+            other_box, other_rotation_matrix
+        )
+        self.collision_counter += 1
+        if collides:
+            dot_entity = dot(box.model_matrix * vec3(), overlap)
+            dot_other = dot(other_box.model_matrix * vec3(), overlap)
+            direction = dot_entity - dot_other
+            if direction < 0:
+                direction = -1
+            elif direction > 0:
+                direction = 1
+            else:
+                direction = 0
+            overlap *= direction
+
+            self.log.info(f"{entity} collides with {other} with an overlap of {overlap}")
+
+            entity.collision = overlap
+            other.collision = overlap * -1
 
     def run(self, game_data: GameData, entity):
         for other in game_data.entities:
@@ -197,21 +241,17 @@ class CollisionSystem(System):
 
             for box in entity.bounding_boxes:
                 for other_box in other.bounding_boxes:
-                    collides, overlap = self.collides(
-                        box, entity.model_matrix,
-                        other_box, other.model_matrix
-                    )
-                    if collides:
-                        direction = dot(entity.position, overlap) - dot(other.position, overlap)
-                        if direction < 0:
-                            direction = -1
-                        elif direction > 0:
-                            direction = 1
-                        overlap *= direction
-                        self.log.info(f"{entity} collides with {other} with an overlap of {overlap}")
+                    self.loop_counter += 1
 
-                        entity.collision = overlap
-                        other.collision = overlap * -1
+                    if self.no_collision_possible(entity, other, box, other_box):
+                        continue
+
+                    self.do_collision_check(entity, other, box, other_box)
+
+    def reset(self, game_data: GameData):
+        self.log.info(f"Looped {self.loop_counter} times and did {self.collision_counter} collision checks")
+        self.loop_counter = 0
+        self.collision_counter = 0
 
 
 class PositionSystem(System):
@@ -240,6 +280,14 @@ class PositionSystem(System):
             translate(entity.model_matrix, entity.position)
         else:
             self.log.error(f"Position is not vec3. Could not update model_matrix on {entity}")
+
+        for bbox in entity.bounding_boxes:
+            m = identity()
+            translate(m, bbox.position)
+            if hasattr(entity, 'scale'):
+                scale(m, entity.scale)
+            translate(m, entity.position)
+            bbox.model_matrix = m
 
 
 class RenderSystem(System):

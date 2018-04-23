@@ -113,6 +113,11 @@ class vec3:
             raise AttributeError(f"{type(other)} is not float or int")
         return vec3(self.x * other, self.y * other, self.z * other)
 
+    def __truediv__(self, other):
+        if type(other) not in [float, int]:
+            raise AttributeError(f"{type(other)} is not float or int")
+        return vec3(self.x / other, self.y / other, self.z / other)
+
     def __getitem__(self, item):
         if item == 'x' or item == 0:
             return self.x
@@ -134,6 +139,9 @@ class vec3:
 
     def __hash__(self):
         return int(f"{self.x}{self.y}{self.z}".replace("-", "").replace(".", ""))
+
+    def __len__(self):
+        return self.length
 
     @property
     def length(self) -> float:
@@ -221,6 +229,11 @@ class mat4:
             return vec3(arr=res[:-1])
         else:
             raise AttributeError(other)
+
+    def copy(self):
+        m = mat4()
+        m.numbers = self.numbers.copy()
+        return m
 
     def to_list(self, column_major=False):
         res = []

@@ -17,10 +17,11 @@ def generate_bounding_box(vertices_in: list, normals: list):
     box = BoundingBox()
     box.vertices = vertices
     box.normals = normals
+    box.radius = max(map(lambda v: v.length, box.vertices))
     return box
 
 
-def cube(size, position: vec3, color: vec3):
+def cube_asset(color: vec3):
     asset = ModelAsset()
     asset.color = color
     asset.shader = Shader("shaders/model_vertex.glsl", "shaders/model_fragment.glsl")
@@ -47,11 +48,15 @@ def cube(size, position: vec3, color: vec3):
     add_mvp_uniforms(asset.uniforms)
     add_light_uniforms(asset.uniforms)
     asset.uniforms["u_Color"] = "color"
+    return asset, vertices, all_normals
 
+
+def cube(size, position: vec3, color: vec3):
     model = ModelInstance()
     model.name = "Cube" + str(position)
+    asset, vertices, normals = cube_asset(color)
     model.asset = asset
-    # model.bounding_boxes = [generate_bounding_box(vertices, all_normals)]
+    model.bounding_boxes = [generate_bounding_box(vertices, normals)]
     model.scale = size
     model.position = position
     scale(model.model_matrix, model.scale)

@@ -74,6 +74,9 @@ class BoundingBox:
     def __init__(self):
         self.vertices = []
         self.normals = []
+        self.position = vec3()
+        self.model_matrix = identity()
+        self.type = 'static'
 
 
 class ModelInstance:
@@ -83,6 +86,7 @@ class ModelInstance:
 
     def __init__(self):
         self.model_matrix = identity()
+        self.bounding_boxes = []
 
     def __repr__(self):
         return self.__str__()
