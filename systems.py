@@ -42,7 +42,8 @@ class System:
 
 class InputSystem(System):
     def __init__(self):
-        super().__init__("Input", ['asset'], ['current_index_buffer_id', 'index_buffers'])
+        super().__init__("Input", ['asset'], [
+            'current_index_buffer_id', 'index_buffers'])
 
     def run(self, game_data: GameData, entity):
         if pyglet.window.key.SPACE in game_data.key_map and game_data.key_map[pyglet.window.key.SPACE]:
@@ -59,7 +60,8 @@ class InputSystem(System):
 
 class MovementInputSystem(System):
     def __init__(self):
-        super().__init__("MovementInput", ['player', 'acceleration', 'rotation', 'velocity'], ['speed'])
+        super().__init__("MovementInput", [
+            'player', 'acceleration', 'rotation', 'velocity'], ['speed'])
 
     def run(self, game_data: GameData, entity):
         if game_data.mouse_movement.x != 0 or game_data.mouse_movement.y != 0:
@@ -109,7 +111,8 @@ class MovementInputSystem(System):
 
 class AccelerationSystem(System):
     def __init__(self):
-        super().__init__("Acceleration", ['velocity', 'acceleration'], ['speed', 'max_speed'])
+        super().__init__("Acceleration", [
+            'velocity', 'acceleration'], ['speed', 'max_speed'])
 
     def run(self, game_data: GameData, entity):
         if entity.velocity.length > 0:
@@ -170,7 +173,8 @@ class CollisionSystem(System):
             elif min_box > min_other and min_box > max_other:
                 return None, None
             else:
-                overlap = CollisionSystem.get_overlap(min_box, max_box, min_other, max_other)
+                overlap = CollisionSystem.get_overlap(
+                    min_box, max_box, min_other, max_other)
                 if minimum_overlap is None or minimum_overlap > overlap:
                     minimum_overlap = overlap
                     overlap_normal = normal
@@ -229,7 +233,8 @@ class CollisionSystem(System):
                 direction = 0
             overlap *= direction
 
-            self.log.info(f"{entity} collides with {other} with an overlap of {overlap}")
+            self.log.info(
+                f"{entity} collides with {other} with an overlap of {overlap}")
 
             entity.collision = overlap
             other.collision = overlap * -1
@@ -249,14 +254,16 @@ class CollisionSystem(System):
                     self.do_collision_check(entity, other, box, other_box)
 
     def reset(self, game_data: GameData):
-        self.log.info(f"Looped {self.loop_counter} times and did {self.collision_counter} collision checks")
+        self.log.debug(
+            f"Looped {self.loop_counter} times and did {self.collision_counter} collision checks")
         self.loop_counter = 0
         self.collision_counter = 0
 
 
 class PositionSystem(System):
     def __init__(self):
-        super().__init__("Position", ['position', 'model_matrix'], ['velocity', 'rotation', 'scale', 'collision'])
+        super().__init__("Position", ['position', 'model_matrix'], [
+            'velocity', 'rotation', 'scale', 'collision'])
 
     def run(self, game_data: GameData, entity):
         if hasattr(entity, 'velocity'):
@@ -274,12 +281,14 @@ class PositionSystem(System):
             if type(entity.rotation) == vec3:
                 rotate(entity.model_matrix, entity.rotation)
             else:
-                self.log.error(f"Rotation is not vec3. Could not update model_matrix on {entity}")
+                self.log.error(
+                    f"Rotation is not vec3. Could not update model_matrix on {entity}")
 
         if type(entity.position) == vec3:
             translate(entity.model_matrix, entity.position)
         else:
-            self.log.error(f"Position is not vec3. Could not update model_matrix on {entity}")
+            self.log.error(
+                f"Position is not vec3. Could not update model_matrix on {entity}")
 
         for bbox in entity.bounding_boxes:
             m = identity()
@@ -294,10 +303,12 @@ class RenderSystem(System):
     def __init__(self):
         super().__init__("Render", ['asset'])
         self.render_calls = 0
+        self.vertex_count = 0
 
     def reset(self, game_data: GameData):
-        self.log.debug(f"{self.render_calls} render calls")
+        self.log.info(f"{self.render_calls} render calls with {self.vertex_count} vertices")
         self.render_calls = 0
+        self.vertex_count = 0
 
     def run(self, game_data: GameData, entity):
         self.render_calls += 1
@@ -308,12 +319,15 @@ class RenderSystem(System):
 
         glBindBuffer(GL_ARRAY_BUFFER, entity.asset.vertex_buffer_id)
         for position, name, gl_type, size, stride, offset in entity.asset.attributes:
-            glVertexAttribPointer(position, size, gl_type, GL_FALSE, stride, offset)
+            glVertexAttribPointer(position, size, gl_type,
+                                  GL_FALSE, stride, offset)
             glEnableVertexAttribArray(position)
-            glBindAttribLocation(entity.asset.shader.handle, position, bytes(name, "utf-8"))
+            glBindAttribLocation(entity.asset.shader.handle,
+                                 position, bytes(name, "utf-8"))
 
         if entity.asset.use_index_buffer:
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.asset.index_buffers[entity.asset.current_index_buffer_id].id)
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
+                         entity.asset.index_buffers[entity.asset.current_index_buffer_id].id)
 
         for uniform_name in entity.asset.uniforms:
             data_name = entity.asset.uniforms[uniform_name]
@@ -325,13 +339,16 @@ class RenderSystem(System):
                 entity.asset.shader.uniform(uniform_name, data)
             elif hasattr(entity.asset, data_name):
                 self.log.debug(f"Found {mapping} in asset")
-                entity.asset.shader.uniform(uniform_name, getattr(entity.asset, data_name))
+                entity.asset.shader.uniform(
+                    uniform_name, getattr(entity.asset, data_name))
             elif hasattr(entity, data_name):
                 self.log.debug(f"Found {mapping} in entity")
-                entity.asset.shader.uniform(uniform_name, getattr(entity, data_name))
+                entity.asset.shader.uniform(
+                    uniform_name, getattr(entity, data_name))
             elif hasattr(game_data, data_name):
                 self.log.debug(f"Found {mapping} in game_data")
-                entity.asset.shader.uniform(uniform_name, getattr(game_data, data_name))
+                entity.asset.shader.uniform(
+                    uniform_name, getattr(game_data, data_name))
             else:
                 self.log.warning(f"Could not find any data for {mapping}")
 
@@ -342,12 +359,15 @@ class RenderSystem(System):
             glBindTexture(GL_TEXTURE_2D, texture_id)
 
         if entity.asset.use_index_buffer:
+            draw_count = entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count
             glDrawElements(entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_type,
-                           entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count, GL_UNSIGNED_INT,
+                           draw_count, GL_UNSIGNED_INT,
                            None)
+            self.vertex_count += draw_count
         else:
-            glDrawArrays(entity.asset.draw_type, entity.asset.draw_start, entity.asset.draw_count)
-
+            glDrawArrays(entity.asset.draw_type,
+                         entity.asset.draw_start, entity.asset.draw_count)
+            self.vertex_count += entity.asset.draw_count
         entity.asset.shader.unbind()
 
 
