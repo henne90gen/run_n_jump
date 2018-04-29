@@ -46,7 +46,7 @@ class Game:
             "acceleration": AccelerationSystem(),
             "position": PositionSystem(),
             "render": RenderSystem(),
-            # "bbrender": BoundingBoxRenderSystem()
+            "bbrender": BoundingBoxRenderSystem()
         }
 
     def tick(self, game_data: GameData):

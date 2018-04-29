@@ -125,6 +125,7 @@ def upload(asset: ModelAsset):
     if vertex_count == -1:
         vertex_count = 0
     vertex_data = combine_attributes(vertex_count, *data)
+    # print(vertex_data)
 
     # noinspection PyCallingNonCallable,PyTypeChecker
     vertex_data_gl = (GLfloat * len(vertex_data))(*vertex_data)

@@ -5,7 +5,7 @@ from pyglet.gl import *
 import logging_config
 from game_data import GameData
 from math_helper import identity, translate, vec3, rotate, vec2, scale, dot, mat4
-from model import BoundingBox
+from model import BoundingBox, ModelInstance, ModelAsset, IndexBuffer, upload
 
 
 class System:
@@ -271,6 +271,7 @@ class PositionSystem(System):
                 entity.position += entity.collision
                 del entity.collision
             entity.position += entity.velocity
+
         self.log.debug(f"{entity.position}")
 
         entity.model_matrix = identity()
@@ -358,16 +359,17 @@ class RenderSystem(System):
             glActiveTexture(texture_unit)
             glBindTexture(GL_TEXTURE_2D, texture_id)
 
-        if entity.asset.use_index_buffer:
-            draw_count = entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count
-            glDrawElements(entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_type,
-                           draw_count, GL_UNSIGNED_INT,
-                           None)
-            self.vertex_count += draw_count
-        else:
-            glDrawArrays(entity.asset.draw_type,
-                         entity.asset.draw_start, entity.asset.draw_count)
-            self.vertex_count += entity.asset.draw_count
+        # if entity.asset.use_index_buffer:
+        draw_count = entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count
+        glDrawElements(entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_type,
+                       draw_count, GL_UNSIGNED_INT,
+                       None)
+        self.vertex_count += draw_count
+        # else:
+        #     glDrawArrays(entity.asset.draw_type,
+        #                  entity.asset.draw_start, entity.asset.draw_count)
+        #     self.vertex_count += entity.asset.draw_count
+
         entity.asset.shader.unbind()
 
 
@@ -375,7 +377,59 @@ class BoundingBoxRenderSystem(System):
     def __init__(self):
         super().__init__("BoundingBoxRender", ['bounding_boxes'])
 
+    @staticmethod
+    def convert_to_vec3(arr: list):
+        result = []
+        for i in range(0, len(arr), 3):
+            result.append(vec3(arr[i], arr[i + 1], arr[i + 2]))
+        return result
+
+    @staticmethod
+    def get_line_indices(vertices: list):
+        indices = []
+        for i in range(0, len(vertices), 9):
+            indices.append(i // 3)
+            indices.append(i // 3 + 1)
+            indices.append(i // 3 + 1)
+            indices.append(i // 3 + 2)
+            indices.append(i // 3 + 2)
+            indices.append(i // 3)
+        return indices
+
     def run(self, game_data: GameData, entity):
-        for bounding_box in entity.bounding_boxes:
-            if hasattr(bounding_box, 'asset'):
-                game_data.systems['render'].run(game_data, bounding_box)
+        if hasattr(entity, 'bb_model'):
+            game_data.systems['render'].run(game_data, entity.bb_model)
+        else:
+            bb_model = ModelInstance()
+            for bounding_box in entity.bounding_boxes:
+                if hasattr(bounding_box, 'asset'):
+                    if bb_model.asset is None:
+                        bb_model.asset = ModelAsset()
+                        bb_model.asset.attribute_data = {'vertices': (3, []), 'normals': (3, [])}
+                        bb_model.asset.attributes = bounding_box.asset.attributes.copy()
+                        bb_model.asset.shader = bounding_box.asset.shader
+                        bb_model.asset.uniforms = bounding_box.asset.uniforms.copy()
+                        bb_model.asset.color = bounding_box.asset.color.copy()
+
+                    vertices = self.convert_to_vec3(bounding_box.asset.attribute_data['vertices'][1])
+                    vertices = list(map(lambda v: bounding_box.model_matrix * v, vertices))
+                    for v in vertices:
+                        bb_model.asset.attribute_data['vertices'][1].extend([*v])
+
+                    for n in bounding_box.asset.attribute_data['normals'][1]:
+                        bb_model.asset.attribute_data['normals'][1].append(n)
+
+            if bb_model.asset is not None:
+                index_buffer = IndexBuffer()
+                index_buffer.draw_type = GL_LINES
+                index_buffer.indices = self.get_line_indices(bb_model.asset.attribute_data['vertices'][1])
+                index_buffer.draw_count = len(index_buffer.indices)
+                bb_model.asset.index_buffers.append(index_buffer)
+                bb_model.asset.current_index_buffer_id = 0
+
+                upload(bb_model.asset)
+
+                # caching the calculated model in the entity
+                entity.bb_model = bb_model
+
+                game_data.systems['render'].run(game_data, entity.bb_model)

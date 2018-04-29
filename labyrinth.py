@@ -168,8 +168,7 @@ def generate_horizontal_wall(arr: np.ndarray, vertices, normals, indices, boundi
         width = (end_col - cur_col) / 2
         size = vec3(width, 1, 0.5)
         position = vec3(width + cur_col, 0, row + direction * 0.5)
-        bounding_box = generate_bounding_box(size, position)
-        bounding_boxes.append(bounding_box)
+        bounding_boxes.append(generate_bounding_box(size, position))
 
         for col in range(cur_col, end_col):
             used_pixels.append((cur_row, col))
