@@ -42,22 +42,17 @@ class ModelAsset:
     vertex_buffer_id = -1
     index_buffers = None
     current_index_buffer_id = -1
-    draw_type = GL_TRIANGLES
-    draw_start = 0
-    draw_count = -1
-
-    vertex_data = None
 
     attributes = None
+    attribute_data = None
     uniforms = None
 
     def __init__(self, use_index_buffer: bool = True):
         self.use_index_buffer = use_index_buffer
         self.color = vec3(1.0, 1.0, 1.0)
 
-        self.vertex_data = []
-
         self.attributes = []
+        self.attribute_data = {}
         self.uniforms = {}
 
         self.vertex_array_id = GLuint()
@@ -120,8 +115,19 @@ def combine_attributes(vertex_count, *attributes):
 
 
 def upload(asset: ModelAsset):
+    vertex_count = -1
+    data = []
+    for key in asset.attribute_data:
+        value = asset.attribute_data[key]
+        data.append(value)
+        if vertex_count == -1:
+            vertex_count = len(value[1]) // value[0]
+    if vertex_count == -1:
+        vertex_count = 0
+    vertex_data = combine_attributes(vertex_count, *data)
+
     # noinspection PyCallingNonCallable,PyTypeChecker
-    vertex_data_gl = (GLfloat * len(asset.vertex_data))(*asset.vertex_data)
+    vertex_data_gl = (GLfloat * len(vertex_data))(*vertex_data)
     glBindBuffer(GL_ARRAY_BUFFER, asset.vertex_buffer_id)
     vertex_buffer_size = sizeof(vertex_data_gl)
     glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertex_data_gl, GL_STATIC_DRAW)

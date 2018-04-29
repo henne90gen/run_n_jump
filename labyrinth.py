@@ -293,7 +293,7 @@ def labyrinth():
 
     image_array = load_image("labyrinth.png")
     vertices, normals, indices, bounding_boxes = generate_vertices(image_array)
-    asset.vertex_data = combine_attributes(len(vertices) // 3, (3, vertices), (3, normals))
+    asset.attribute_data = {'vertices': (3, vertices), 'normals': (3, normals)}
 
     for draw_type, values in indices:
         index_buffer = IndexBuffer()

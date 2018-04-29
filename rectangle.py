@@ -91,8 +91,7 @@ def rectangular_prism(size: vec3, color: vec3):
     asset.attributes = attributes
 
     vertices, normals, indices = generate_vertices(size)
-    vertex_count = len(vertices) // 3
-    asset.vertex_data = combine_attributes(vertex_count, (3, vertices), (3, normals))
+    asset.attribute_data = {'vertices': (3, vertices), 'normals': (3, normals)}
 
     for draw_type, values in indices:
         index_buffer = IndexBuffer()

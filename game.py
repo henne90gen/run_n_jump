@@ -35,9 +35,7 @@ class Game:
             cube(size, vec3(size * 5), red),
             cube(size, vec3(0, size * 5, 0), green),
             cube(size, vec3(0, 0, size * 5), blue),
-            # cube(size, vec3(size * 2 + 1, 0), vec3(255, 0, 255)),
             labyrinth(),
-            # text2d("", position=vec2(100, 100), font_size=11),
             text2d(str(vec3(0, 0, size * 5)), position=vec2(100, 80), font_size=11),
         ]
 
@@ -48,7 +46,7 @@ class Game:
             "acceleration": AccelerationSystem(),
             "position": PositionSystem(),
             "render": RenderSystem(),
-            "bbrender": BoundingBoxRenderSystem()
+            # "bbrender": BoundingBoxRenderSystem()
         }
 
     def tick(self, game_data: GameData):
