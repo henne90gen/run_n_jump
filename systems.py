@@ -254,7 +254,7 @@ class CollisionSystem(System):
                     self.do_collision_check(entity, other, box, other_box)
 
     def reset(self, game_data: GameData):
-        self.log.debug(
+        self.log.info(
             f"Looped {self.loop_counter} times and did {self.collision_counter} collision checks")
         self.loop_counter = 0
         self.collision_counter = 0
@@ -359,16 +359,11 @@ class RenderSystem(System):
             glActiveTexture(texture_unit)
             glBindTexture(GL_TEXTURE_2D, texture_id)
 
-        # if entity.asset.use_index_buffer:
         draw_count = entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count
         glDrawElements(entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_type,
                        draw_count, GL_UNSIGNED_INT,
                        None)
         self.vertex_count += draw_count
-        # else:
-        #     glDrawArrays(entity.asset.draw_type,
-        #                  entity.asset.draw_start, entity.asset.draw_count)
-        #     self.vertex_count += entity.asset.draw_count
 
         entity.asset.shader.unbind()
 

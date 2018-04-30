@@ -8,8 +8,8 @@ from cube import cube
 from game_data import GameData
 from labyrinth import labyrinth
 from math_helper import vec2, vec3, identity, rotate, translate
-from systems import RenderSystem, PositionSystem, InputSystem, MovementInputSystem, AccelerationSystem, CollisionSystem, \
-    BoundingBoxRenderSystem
+from systems import RenderSystem, PositionSystem, InputSystem, MovementInputSystem, AccelerationSystem, \
+    BoundingBoxRenderSystem, CollisionSystem
 from text import text2d
 
 
