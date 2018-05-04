@@ -23,8 +23,8 @@ class Camera:
         self.velocity = vec3()
         self.acceleration = vec3()
         self.player = True
-        self.speed = 0.5
-        self.max_speed = 0.15
+        self.speed = 1
+        self.max_speed = 0.25
         self.bounding_boxes = [camera_bounding_box()]
 
     def __repr__(self):
