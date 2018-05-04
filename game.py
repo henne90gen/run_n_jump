@@ -18,7 +18,7 @@ class Game:
         self.log = logging_config.getLogger(__name__)
         self.log.setLevel(logging.INFO)
 
-        camera_position = vec3(5, 0, 5)
+        camera_position = vec3(20, 0, 20)
         camera_angle = vec2(0, 120)
         self.camera = Camera(camera_position, camera_angle)
 
@@ -35,7 +35,7 @@ class Game:
             cube(size, vec3(size * 5), red),
             cube(size, vec3(0, size * 5, 0), green),
             cube(size, vec3(0, 0, size * 5), blue),
-            labyrinth(),
+            *labyrinth(),
             text2d(str(vec3(0, 0, size * 5)), position=vec2(100, 80), font_size=11),
         ]
 

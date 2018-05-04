@@ -233,7 +233,7 @@ class CollisionSystem(System):
                 direction = 0
             overlap *= direction
 
-            self.log.info(
+            self.log.debug(
                 f"{entity} collides with {other} with an overlap of {overlap}")
 
             entity.collision = overlap
@@ -254,7 +254,7 @@ class CollisionSystem(System):
                     self.do_collision_check(entity, other, box, other_box)
 
     def reset(self, game_data: GameData):
-        self.log.info(
+        self.log.debug(
             f"Looped {self.loop_counter} times and did {self.collision_counter} collision checks")
         self.loop_counter = 0
         self.collision_counter = 0
@@ -307,7 +307,7 @@ class RenderSystem(System):
         self.vertex_count = 0
 
     def reset(self, game_data: GameData):
-        self.log.info(f"{self.render_calls} render calls with {self.vertex_count} vertices")
+        self.log.debug(f"{self.render_calls} render calls with {self.vertex_count} vertices")
         self.render_calls = 0
         self.vertex_count = 0
 
