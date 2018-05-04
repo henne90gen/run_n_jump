@@ -27,9 +27,9 @@ def load_image(filename: str):
 
 def find_next_black_pixel(arr: np.ndarray, row: int, col: int):
     while True:
-        if col < arr.shape[0] - 1:
+        if col < arr.shape[1] - 1:
             col += 1
-        elif row < arr.shape[1] - 1:
+        elif row < arr.shape[0] - 1:
             row += 1
             col = 0
         else:
@@ -40,18 +40,18 @@ def find_next_black_pixel(arr: np.ndarray, row: int, col: int):
 
 
 def find_bottom_edge(arr: np.ndarray, start_row: int, col: int):
-    for row in range(start_row, arr.shape[1]):
+    for row in range(start_row, arr.shape[0]):
         if arr[row, col] != 255:
             return row - 1
-    return arr.shape[1] - 1
+    return arr.shape[0] - 1
 
 
 def find_right_edge(arr: np.ndarray, used_pixels: list, start_row, end_row, start_col):
-    for col in range(start_col, arr.shape[0]):
+    for col in range(start_col, arr.shape[1]):
         for row in range(start_row, end_row + 1):
             if arr[row, col] != 255 or (row, col) in used_pixels:
                 return col - 1
-    return arr.shape[0] - 1
+    return arr.shape[1] - 1
 
 
 def add_horizontal_plane(vertices, normals, indices, normal_direction, start: vec2, end: vec2):
@@ -81,7 +81,7 @@ def add_ceiling(vertices, normals, indices, start, end):
     add_horizontal_plane(vertices, normals, indices, 1, start, end)
 
 
-def generate_floor_and_ceiling(arr: np.ndarray, vertices: list, normals: list, indices: list):
+def generate_floor_and_ceiling(arr: np.ndarray, block_offset: vec2, vertices: list, normals: list, indices: list):
     cur_row = 0
     cur_col = -1
     used_pixels = []
@@ -93,8 +93,12 @@ def generate_floor_and_ceiling(arr: np.ndarray, vertices: list, normals: list, i
             break
         end_row = find_bottom_edge(arr, cur_row, cur_col)
         end_col = find_right_edge(arr, used_pixels, cur_row, end_row, cur_col)
-        add_floor(vertices, normals, indices, vec2(cur_col, cur_row), vec2(end_col, end_row))
-        add_ceiling(vertices, normals, indices, vec2(cur_col, cur_row), vec2(end_col, end_row))
+
+        add_floor(vertices, normals, indices, vec2(cur_col, cur_row) - block_offset,
+                  vec2(end_col, end_row) - block_offset)
+        add_ceiling(vertices, normals, indices, vec2(cur_col, cur_row) - block_offset,
+                    vec2(end_col, end_row) - block_offset)
+
         for row in range(cur_row, end_row + 1):
             for col in range(cur_col, end_col + 1):
                 used_pixels.append((row, col))
@@ -104,16 +108,16 @@ def is_edge(arr, row, col, direction):
     neighbor_row = row + direction[0]
     neighbor_col = col + direction[1]
     return arr[row, col] == 128 and \
-           0 < neighbor_row < arr.shape[1] and \
-           0 < neighbor_col < arr.shape[0] and \
+           0 < neighbor_row < arr.shape[0] and \
+           0 < neighbor_col < arr.shape[1] and \
            arr[neighbor_row, neighbor_col] == 255
 
 
 def find_next_edge_pixel(arr: np.ndarray, row, col, offset):
     while True:
-        if col < arr.shape[0] - 1:
+        if col < arr.shape[1] - 1:
             col += 1
-        elif row < arr.shape[1] - 1:
+        elif row < arr.shape[0] - 1:
             row += 1
             col = 0
         else:
@@ -124,10 +128,10 @@ def find_next_edge_pixel(arr: np.ndarray, row, col, offset):
 
 
 def find_right_end(arr: np.ndarray, row, start_col, direction):
-    for col in range(start_col, arr.shape[0]):
+    for col in range(start_col, arr.shape[1]):
         if not is_edge(arr, row, col, (direction, 0)):
             return col
-    return arr.shape[0]
+    return arr.shape[1]
 
 
 def add_vertical_plane_x_y(vertices, normals, indices, normal_direction, row, start_col, end_col):
@@ -147,7 +151,8 @@ def add_vertical_plane_x_y(vertices, normals, indices, normal_direction, row, st
     vertices.extend([start_col, 1, row])
 
 
-def generate_horizontal_wall(arr: np.ndarray, vertices, normals, indices, bounding_boxes, direction):
+def generate_horizontal_wall(arr: np.ndarray, block_offset: vec2, vertices, normals, indices, bounding_boxes,
+                             direction):
     cur_row = 0
     cur_col = -1
     used_pixels = []
@@ -163,17 +168,18 @@ def generate_horizontal_wall(arr: np.ndarray, vertices, normals, indices, boundi
             row = cur_row + 1
         else:
             row = cur_row
-        add_vertical_plane_x_y(vertices, normals, indices, direction, row, cur_col, end_col)
+        add_vertical_plane_x_y(vertices, normals, indices, direction, row - block_offset.x, cur_col - block_offset.y,
+                               end_col - block_offset.y)
 
-        width = (end_col - cur_col) / 2
-        size = vec3(width, 1, 0.5)
-        position = vec3(width + cur_col, 0, row - direction * 0.5)
+        half_width = (end_col - cur_col) / 2
+        size = vec3(half_width, 1, 0.5)
+        position = vec3(half_width + cur_col - block_offset.y, 0, row - block_offset.x - direction * 0.5)
 
-        if arr[row, end_col + 1] != 255:
+        if end_col + 1 < arr.shape[1] and arr[row, end_col + 1] != 255:
             size += vec3(0.5, 0, 0)
             position += vec3(0.5, 0, 0)
 
-        if arr[row, cur_col - 1] != 255:
+        if end_col - 1 >= 0 and arr[row, cur_col - 1] != 255:
             size += vec3(0.5, 0, 0)
             position -= vec3(0.5, 0, 0)
 
@@ -183,19 +189,19 @@ def generate_horizontal_wall(arr: np.ndarray, vertices, normals, indices, boundi
             used_pixels.append((cur_row, col))
 
 
-def generate_front(arr, vertices, normals, indices, bounding_boxes):
-    generate_horizontal_wall(arr, vertices, normals, indices, bounding_boxes, 1)
+def generate_front(arr, block_offset, vertices, normals, indices, bounding_boxes):
+    generate_horizontal_wall(arr, block_offset, vertices, normals, indices, bounding_boxes, 1)
 
 
-def generate_back(arr, vertices, normals, indices, bounding_boxes):
-    generate_horizontal_wall(arr, vertices, normals, indices, bounding_boxes, -1)
+def generate_back(arr, block_offset, vertices, normals, indices, bounding_boxes):
+    generate_horizontal_wall(arr, block_offset, vertices, normals, indices, bounding_boxes, -1)
 
 
 def find_bottom_end(arr: np.ndarray, start_row, col, direction):
-    for row in range(start_row, arr.shape[1]):
+    for row in range(start_row, arr.shape[0]):
         if not is_edge(arr, row, col, (0, direction)):
             return row
-    return arr.shape[1]
+    return arr.shape[0]
 
 
 def add_vertical_plane_z_y(vertices, normals, indices, normal_direction, start_row, end_row, col):
@@ -215,7 +221,8 @@ def add_vertical_plane_z_y(vertices, normals, indices, normal_direction, start_r
     vertices.extend([col, 1, start_row])
 
 
-def generate_vertical_wall(arr, vertices, normals, indices, bounding_boxes, direction):
+def generate_vertical_wall(arr: np.ndarray, block_offset: vec2, vertices: list, normals: list, indices: list,
+                           bounding_boxes: list, direction: int):
     cur_row = 0
     cur_col = -1
     used_pixels = []
@@ -231,17 +238,18 @@ def generate_vertical_wall(arr, vertices, normals, indices, bounding_boxes, dire
             col = cur_col + 1
         else:
             col = cur_col
-        add_vertical_plane_z_y(vertices, normals, indices, direction, cur_row, end_row, col)
+        add_vertical_plane_z_y(vertices, normals, indices, direction, cur_row - block_offset.x,
+                               end_row - block_offset.x, col - block_offset.y)
 
         half_height = (end_row - cur_row) / 2
         size = vec3(0.5, 1, half_height)
-        position = vec3(col - direction * 0.5, 0, half_height + cur_row)
+        position = vec3(col - block_offset.y - direction * 0.5, 0, half_height + cur_row - block_offset.x)
 
-        if arr[end_row + 1, col] != 255:
+        if end_row + 1 < arr.shape[0] and arr[end_row + 1, col] != 255:
             size += vec3(0, 0, 0.5)
             position += vec3(0, 0, 0.5)
 
-        if arr[cur_row - 1, col] != 255:
+        if end_row - 1 >= 0 and arr[cur_row - 1, col] != 255:
             size += vec3(0, 0, 0.5)
             position -= vec3(0, 0, 0.5)
 
@@ -252,12 +260,12 @@ def generate_vertical_wall(arr, vertices, normals, indices, bounding_boxes, dire
             used_pixels.append((row, cur_col))
 
 
-def generate_left(arr, vertices, normals, indices, bounding_boxes):
-    generate_vertical_wall(arr, vertices, normals, indices, bounding_boxes, 1)
+def generate_left(arr, block_offset, vertices, normals, indices, bounding_boxes):
+    generate_vertical_wall(arr, block_offset, vertices, normals, indices, bounding_boxes, 1)
 
 
-def generate_right(arr, vertices, normals, indices, bounding_boxes):
-    generate_vertical_wall(arr, vertices, normals, indices, bounding_boxes, -1)
+def generate_right(arr, block_offset, vertices, normals, indices, bounding_boxes):
+    generate_vertical_wall(arr, block_offset, vertices, normals, indices, bounding_boxes, -1)
 
 
 def generate_bounding_box(size: vec3, position: vec3):
@@ -281,7 +289,7 @@ def generate_bounding_box(size: vec3, position: vec3):
     return box
 
 
-def generate_vertices(arr: np.ndarray):
+def generate_vertices(arr: np.ndarray, block_size: int):
     vertices = []
     normals = []
     indices = []
@@ -289,24 +297,35 @@ def generate_vertices(arr: np.ndarray):
 
     # for row in arr:
     #     print(row)
+    # print()
 
-    generate_floor_and_ceiling(arr, vertices, normals, indices)
+    block_offset = vec2(block_size, block_size) / 2.0
 
-    generate_front(arr, vertices, normals, indices, bounding_boxes)
-    generate_back(arr, vertices, normals, indices, bounding_boxes)
+    generate_floor_and_ceiling(arr, block_offset, vertices, normals, indices)
 
-    generate_left(arr, vertices, normals, indices, bounding_boxes)
-    generate_right(arr, vertices, normals, indices, bounding_boxes)
+    generate_front(arr, block_offset, vertices, normals, indices, bounding_boxes)
+    generate_back(arr, block_offset, vertices, normals, indices, bounding_boxes)
+
+    generate_left(arr, block_offset, vertices, normals, indices, bounding_boxes)
+    generate_right(arr, block_offset, vertices, normals, indices, bounding_boxes)
 
     return vertices, normals, [(GL_TRIANGLES, indices), (GL_LINES, get_line_indices(indices))], bounding_boxes
 
 
-def labyrinth():
-    image_array = load_image("labyrinth_new.png")
-    return [labyrinth_part(image_array, vec3())]
+def labyrinth(block_size: int = 20):
+    image_array = load_image("labyrinth.png")
+    parts = []
+    for row in range(0, image_array.shape[1], block_size - 2):
+        for col in range(0, image_array.shape[0], block_size - 2):
+            block = image_array[row:row + block_size, col:col + block_size]
+            lab = labyrinth_part(block, row, col, block_size)
+            if lab is not None:
+                parts.append(lab)
+
+    return parts
 
 
-def labyrinth_part(image_array: np.ndarray, position: vec3):
+def labyrinth_part(image_array: np.ndarray, row_offset: int, col_offset: int, block_size: int):
     asset = ModelAsset()
     asset.shader = Shader("shaders/model_vertex.glsl", "shaders/model_fragment.glsl")
     stride = 6 * sizeof(c_float)
@@ -316,7 +335,9 @@ def labyrinth_part(image_array: np.ndarray, position: vec3):
     ]
     asset.attributes = attributes
 
-    vertices, normals, indices, bounding_boxes = generate_vertices(image_array)
+    vertices, normals, indices, bounding_boxes = generate_vertices(image_array, block_size)
+    if len(vertices) == 0:
+        return None
     asset.attribute_data = {'vertices': (3, vertices), 'normals': (3, normals)}
 
     for draw_type, values in indices:
@@ -337,7 +358,7 @@ def labyrinth_part(image_array: np.ndarray, position: vec3):
     model.asset = asset
     model.bounding_boxes = bounding_boxes
     model.scale = LABYRINTH_SCALE
-    model.position = position
+    model.position = vec3((col_offset + block_size / 2) * model.scale, 0, (row_offset + block_size / 2) * model.scale)
     model.model_matrix = identity()
     scale(model.model_matrix, model.scale)
     translate(model.model_matrix, model.position)

@@ -44,6 +44,11 @@ class vec2:
             raise AttributeError
         return vec2(self.x * other, self.y * other)
 
+    def __truediv__(self, other):
+        if type(other) not in [float, int]:
+            raise AttributeError
+        return vec2(self.x / other, self.y / other)
+
     def __getitem__(self, item):
         if item == 'x' or item == 0:
             return self.x

@@ -63,6 +63,12 @@ class Game:
 
         for system in self.systems.values():
             for entity in self.entities:
+                direction = vec2(1).rotate(self.camera.rotation.y - 90)
+                forward_direction = vec3(direction.x, 0, direction.y) * 20
+
+                if (self.camera.position + forward_direction - entity.position).length > 75:
+                    continue
+
                 if system.supports(entity):
                     self.log.debug(f"Running system {system} on entity {entity}")
                     system.run(game_data, entity)
