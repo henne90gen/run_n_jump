@@ -6,27 +6,13 @@ from systems import CollisionSystem
 
 
 class CollisionTest(unittest.TestCase):
-    def test_project_simple(self):
-        box = BoundingBox()
-        box.vertices = [vec3(2), vec3(-1)]
-        normal = vec3(1)
-        position = vec3()
-        matrix = identity()
-        translate(matrix, position)
-        min_box, max_box = CollisionSystem.project(box, matrix, normal)
-        self.assertEqual(-1, min_box)
-        self.assertEqual(2, max_box)
-
     def test_project(self):
         box = BoundingBox()
         box.vertices = [vec3(2), vec3(-1)]
         normal = vec3(1)
-        position = vec3(1)
-        matrix = identity()
-        translate(matrix, position)
-        min_box, max_box = CollisionSystem.project(box, matrix, normal)
-        self.assertEqual(0, min_box)
-        self.assertEqual(3, max_box)
+        min_box, max_box = CollisionSystem.project(box, normal)
+        self.assertEqual(-1, min_box)
+        self.assertEqual(2, max_box)
 
     normals = [vec3(1), vec3(-1), vec3(0, 1), vec3(0, -1), vec3(0, 0, 1), vec3(0, 0, -1)]
     vertices = [

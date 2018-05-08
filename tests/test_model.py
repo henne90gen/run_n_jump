@@ -1,7 +1,7 @@
 import os
 import unittest
 
-from model import load_model
+from model import load_blender_file
 
 
 class ModelTest(unittest.TestCase):
@@ -46,5 +46,5 @@ class ModelTest(unittest.TestCase):
         os.remove(self.path)
 
     def test_load_model(self):
-        model = load_model(self.path, "../")
+        model = load_blender_file(self.path)
         self.assertIsNotNone(model)

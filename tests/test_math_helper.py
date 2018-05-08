@@ -91,13 +91,13 @@ class MethodTest(unittest.TestCase):
         v1 = vec3(90, 90)
         rotate(m, v1)
         self.assertEqual(mat4([
+            [0, 0, 1, 0],
+            [1, 0, 0, 0],
             [0, 1, 0, 0],
-            [0, 0, -1, 0],
-            [-1, 0, 0, 0],
             [0, 0, 0, 1]
         ]), m)
         v2 = m * vec3(0, 1, 0)
-        self.assertEqual(vec3(1, 0, 0), v2)
+        self.assertEqual(vec3(0, 0, 1), v2)
 
     def test_rotate_and_translate(self):
         m = identity()

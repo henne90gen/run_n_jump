@@ -55,12 +55,6 @@ class ModelAsset:
         self.attribute_data = {}
         self.uniforms = {}
 
-        self.vertex_array_id = GLuint()
-        glGenVertexArrays(1, self.vertex_array_id)
-
-        self.vertex_buffer_id = GLuint()
-        glGenBuffers(1, self.vertex_buffer_id)
-
         self.current_index_buffer_id = 0
         self.index_buffers = []
 
@@ -115,6 +109,12 @@ def combine_attributes(vertex_count, *attributes):
 
 
 def upload(asset: ModelAsset):
+    asset.vertex_array_id = GLuint()
+    glGenVertexArrays(1, asset.vertex_array_id)
+
+    asset.vertex_buffer_id = GLuint()
+    glGenBuffers(1, asset.vertex_buffer_id)
+
     vertex_count = -1
     data = []
     for key in asset.attribute_data:
@@ -124,8 +124,8 @@ def upload(asset: ModelAsset):
             vertex_count = len(value[1]) // value[0]
     if vertex_count == -1:
         vertex_count = 0
+
     vertex_data = combine_attributes(vertex_count, *data)
-    # print(vertex_data)
 
     # noinspection PyCallingNonCallable,PyTypeChecker
     vertex_data_gl = (GLfloat * len(vertex_data))(*vertex_data)

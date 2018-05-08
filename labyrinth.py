@@ -5,9 +5,9 @@ from PIL import Image
 from pyglet.gl import *
 
 from math_helper import identity, vec3, translate, scale, vec2
-from model import ModelAsset, ModelInstance, upload, combine_attributes, add_mvp_uniforms, add_light_uniforms, \
+from model import ModelAsset, ModelInstance, upload, add_mvp_uniforms, add_light_uniforms, \
     BoundingBox, IndexBuffer, get_line_indices
-from rectangle import rectangular_prism
+from rectangle import rectangular_prism_vertices
 from shader import Shader
 
 LABYRINTH_SCALE = 5
@@ -23,6 +23,37 @@ def load_image(filename: str):
         for col in range(width):
             map_array[row, col] = image_array[row * width + col]
     return map_array
+
+
+def save_image(arr: np.ndarray, filename: str):
+    im = Image.new('L', (arr.shape[1], arr.shape[0]))
+    im.putdata(arr.flatten().tolist())
+    im.save(f"{filename.split('.')[0]}_gen.png")
+
+
+def is_edge_pixel(arr: np.ndarray, row: int, col: int):
+    return arr[row, col] == 255 and (
+            row - 1 < 0 or
+            row + 1 >= arr.shape[0] or
+            col - 1 < 0 or
+            col + 1 >= arr.shape[1] or
+            arr[row + 1, col] == 0 or
+            arr[row + 1, col + 1] == 0 or
+            arr[row + 1, col - 1] == 0 or
+            arr[row - 1, col] == 0 or
+            arr[row - 1, col + 1] == 0 or
+            arr[row - 1, col - 1] == 0 or
+            arr[row, col + 1] == 0 or
+            arr[row, col - 1] == 0
+    )
+
+
+def mark_edges(arr: np.ndarray):
+    for row in range(arr.shape[0]):
+        for col in range(arr.shape[1]):
+            if is_edge_pixel(arr, row, col):
+                arr[row, col] = 128
+    return arr
 
 
 def find_next_black_pixel(arr: np.ndarray, row: int, col: int):
@@ -269,9 +300,37 @@ def generate_right(arr, block_offset, vertices, normals, indices, bounding_boxes
 
 
 def generate_bounding_box(size: vec3, position: vec3):
+    vertices, normals, indices = rectangular_prism_vertices(size)
+    return vertices, normals, indices, position
+
+
+def create_bounding_box(vertices, normals, indices, position: vec3):
     box = BoundingBox()
-    asset, vertices, normals = rectangular_prism(size, vec3(1, 0, 1))
+    asset = ModelAsset()
+    asset.color = vec3(1, 0, 1)
+    asset.shader = Shader("shaders/bb_vertex.glsl", "shaders/bb_fragment.glsl")
     asset.current_index_buffer_id = 1
+    stride = 6 * sizeof(c_float)
+    attributes = [
+        (0, 'a_Position', GL_FLOAT, 3, stride, 0),
+        (1, 'a_Normal', GL_FLOAT, 3, stride, 3 * sizeof(c_float))
+    ]
+    asset.attributes = attributes
+
+    asset.attribute_data = {'vertices': (3, vertices), 'normals': (3, normals)}
+
+    for draw_type, values in indices:
+        index_buffer = IndexBuffer()
+        index_buffer.draw_type = draw_type
+        index_buffer.draw_count = len(values)
+        index_buffer.indices = values
+        asset.index_buffers.append(index_buffer)
+
+    upload(asset)
+
+    add_mvp_uniforms(asset.uniforms)
+    add_light_uniforms(asset.uniforms)
+    asset.uniforms["u_Color"] = "color"
 
     def convert_to_vec3(arr: list):
         result = []
@@ -295,10 +354,6 @@ def generate_vertices(arr: np.ndarray, block_size: int):
     indices = []
     bounding_boxes = []
 
-    # for row in arr:
-    #     print(row)
-    # print()
-
     block_offset = vec2(block_size, block_size) / 2.0
 
     generate_floor_and_ceiling(arr, block_offset, vertices, normals, indices)
@@ -313,19 +368,20 @@ def generate_vertices(arr: np.ndarray, block_size: int):
 
 
 def labyrinth(block_size: int = 20):
-    image_array = load_image("labyrinth.png")
-    parts = []
+    filename = "labyrinth.png"
+    image_array = load_image(filename)
+    image_array = mark_edges(image_array)
+    save_image(image_array, filename)
+
     for row in range(0, image_array.shape[1], block_size - 2):
         for col in range(0, image_array.shape[0], block_size - 2):
             block = image_array[row:row + block_size, col:col + block_size]
-            lab = labyrinth_part(block, row, col, block_size)
-            if lab is not None:
-                parts.append(lab)
-
-    return parts
+            vertices, normals, indices, bounding_boxes = generate_vertices(block, block_size)
+            if len(vertices) != 0:
+                yield row, col, block_size, vertices, normals, indices, bounding_boxes
 
 
-def labyrinth_part(image_array: np.ndarray, row_offset: int, col_offset: int, block_size: int):
+def create_labyrinth(row_offset: int, col_offset: int, block_size: int, vertices, normals, indices, bounding_boxes):
     asset = ModelAsset()
     asset.shader = Shader("shaders/model_vertex.glsl", "shaders/model_fragment.glsl")
     stride = 6 * sizeof(c_float)
@@ -335,7 +391,6 @@ def labyrinth_part(image_array: np.ndarray, row_offset: int, col_offset: int, bl
     ]
     asset.attributes = attributes
 
-    vertices, normals, indices, bounding_boxes = generate_vertices(image_array, block_size)
     if len(vertices) == 0:
         return None
     asset.attribute_data = {'vertices': (3, vertices), 'normals': (3, normals)}
@@ -347,18 +402,18 @@ def labyrinth_part(image_array: np.ndarray, row_offset: int, col_offset: int, bl
         index_buffer.indices = values
         asset.index_buffers.append(index_buffer)
 
-    upload(asset)
-
     add_mvp_uniforms(asset.uniforms)
     add_light_uniforms(asset.uniforms)
     asset.uniforms["u_Color"] = "color"
 
+    upload(asset)
+
     model = ModelInstance()
-    model.name = "Labyrinth"
     model.asset = asset
-    model.bounding_boxes = bounding_boxes
+    model.bounding_boxes = [create_bounding_box(*item) for item in bounding_boxes]
     model.scale = LABYRINTH_SCALE
     model.position = vec3((col_offset + block_size / 2) * model.scale, 0, (row_offset + block_size / 2) * model.scale)
+    model.name = f"Labyrinth {model.position}"
     model.model_matrix = identity()
     scale(model.model_matrix, model.scale)
     translate(model.model_matrix, model.position)

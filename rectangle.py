@@ -3,12 +3,12 @@ from ctypes import c_float, sizeof
 from pyglet.gl import *
 
 from math_helper import vec3
-from model import ModelAsset, combine_attributes, IndexBuffer, upload, add_mvp_uniforms, add_light_uniforms, \
+from model import ModelAsset, IndexBuffer, upload, add_mvp_uniforms, add_light_uniforms, \
     get_line_indices
 from shader import Shader
 
 
-def generate_vertices(size: vec3):
+def rectangular_prism_vertices(size: vec3):
     vertices = []
     normals = []
     indices = []
@@ -79,7 +79,7 @@ def generate_vertices(size: vec3):
     return vertices, normals, [(GL_TRIANGLES, indices), (GL_LINES, get_line_indices(indices))]
 
 
-def rectangular_prism(size: vec3, color: vec3):
+def rectangular_prism(color: vec3, vertices, normals, indices):
     asset = ModelAsset()
     asset.color = color
     asset.shader = Shader("shaders/model_vertex.glsl", "shaders/model_fragment.glsl")
@@ -90,7 +90,6 @@ def rectangular_prism(size: vec3, color: vec3):
     ]
     asset.attributes = attributes
 
-    vertices, normals, indices = generate_vertices(size)
     asset.attribute_data = {'vertices': (3, vertices), 'normals': (3, normals)}
 
     for draw_type, values in indices:
@@ -105,4 +104,4 @@ def rectangular_prism(size: vec3, color: vec3):
     add_mvp_uniforms(asset.uniforms)
     add_light_uniforms(asset.uniforms)
     asset.uniforms["u_Color"] = "color"
-    return asset, vertices, normals
+    return asset
