@@ -5,7 +5,8 @@ from pyglet.gl import *
 import logging_config
 from game_data import GameData
 from math_helper import identity, translate, vec3, rotate, vec2, scale, dot, mat4
-from model import BoundingBox, ModelInstance, ModelAsset, IndexBuffer, upload
+from model import BoundingBox
+from text import update_text
 
 
 class System:
@@ -40,22 +41,56 @@ class System:
         return self.name
 
 
+class GlobalInputSystem(System):
+    def __init__(self):
+        super().__init__("GlobalInput")
+
+    def run(self, game_data: GameData, entity):
+        if pyglet.window.key.SPACE in game_data.key_map and game_data.key_map[pyglet.window.key.SPACE]:
+            game_data.wireframe = not game_data.wireframe
+            del game_data.key_map[pyglet.window.key.SPACE]
+            self.log.info(f"Switched to wireframe={game_data.wireframe}")
+
+        if pyglet.window.key.O in game_data.key_map and game_data.key_map[pyglet.window.key.O]:
+            game_data.show_overview = not game_data.show_overview
+            del game_data.key_map[pyglet.window.key.O]
+            if game_data.show_overview:
+                game_data.camera.position = vec3(250, 100, 250)
+                game_data.camera.rotation = vec3(90, 0, 0)
+                game_data.camera.player = False
+            else:
+                game_data.camera.position = game_data.player_configuration[0]
+                game_data.camera.rotation = game_data.player_configuration[1]
+                game_data.camera.player = True
+            self.log.info(f"Switched to show_overview={game_data.show_overview}")
+
+    def reset(self, game_data: GameData):
+        pass
+
+
+class DebugUISystem(System):
+    def __init__(self):
+        super().__init__("DebugUI")
+
+    def run(self, game_data: GameData, entity):
+        if hasattr(entity, "text"):
+            try:
+                new_text = entity.text.format(**game_data.debug_data)
+                update_text(entity, new_text)
+            except KeyError as e:
+                self.log.error(f"Missing debug data: {e}")
+
+
 class InputSystem(System):
     def __init__(self):
         super().__init__("Input", ['asset'], [
             'current_index_buffer_id', 'index_buffers'])
 
     def run(self, game_data: GameData, entity):
-        if pyglet.window.key.SPACE in game_data.key_map and game_data.key_map[pyglet.window.key.SPACE]:
-            if hasattr(entity.asset, 'current_index_buffer_id') and hasattr(entity.asset, 'index_buffers'):
-                if len(entity.asset.index_buffers) == 0:
-                    return
-                entity.asset.current_index_buffer_id = (entity.asset.current_index_buffer_id + 1) % len(
-                    entity.asset.index_buffers)
+        pass
 
     def reset(self, game_data: GameData):
-        if pyglet.window.key.SPACE in game_data.key_map:
-            del game_data.key_map[pyglet.window.key.SPACE]
+        pass
 
 
 class MovementInputSystem(System):
@@ -64,6 +99,9 @@ class MovementInputSystem(System):
             'player', 'acceleration', 'rotation', 'velocity'], ['speed'])
 
     def run(self, game_data: GameData, entity):
+        if game_data.show_overview:
+            return
+
         if game_data.mouse_movement.x != 0 or game_data.mouse_movement.y != 0:
             scale_factor = game_data.frame_time * 100 * game_data.sensitivity
             entity.rotation.x -= game_data.mouse_movement.y * scale_factor
@@ -240,7 +278,7 @@ class CollisionSystem(System):
             other.collision = overlap * -1
 
     def run(self, game_data: GameData, entity):
-        for other in game_data.entities:
+        for other in game_data.entities.query(entity.position):
             if entity == other or not (hasattr(other, 'model_matrix') and hasattr(other, 'bounding_boxes')):
                 continue
 
@@ -314,6 +352,11 @@ class RenderSystem(System):
     def run(self, game_data: GameData, entity):
         self.render_calls += 1
 
+        if not game_data.wireframe:
+            entity.asset.current_index_buffer_id = 0
+        else:
+            entity.asset.current_index_buffer_id = 1 % len(entity.asset.index_buffers)
+
         entity.asset.shader.bind()
 
         glBindVertexArray(entity.asset.vertex_array_id)
@@ -326,9 +369,7 @@ class RenderSystem(System):
             glBindAttribLocation(entity.asset.shader.handle,
                                  position, bytes(name, "utf-8"))
 
-        if entity.asset.use_index_buffer:
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
-                         entity.asset.index_buffers[entity.asset.current_index_buffer_id].id)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.asset.index_buffers[entity.asset.current_index_buffer_id].id)
 
         for uniform_name in entity.asset.uniforms:
             data_name = entity.asset.uniforms[uniform_name]
@@ -372,59 +413,10 @@ class BoundingBoxRenderSystem(System):
     def __init__(self):
         super().__init__("BoundingBoxRender", ['bounding_boxes'])
 
-    @staticmethod
-    def convert_to_vec3(arr: list):
-        result = []
-        for i in range(0, len(arr), 3):
-            result.append(vec3(arr[i], arr[i + 1], arr[i + 2]))
-        return result
-
-    @staticmethod
-    def get_line_indices(vertices: list):
-        indices = []
-        for i in range(0, len(vertices), 9):
-            indices.append(i // 3)
-            indices.append(i // 3 + 1)
-            indices.append(i // 3 + 1)
-            indices.append(i // 3 + 2)
-            indices.append(i // 3 + 2)
-            indices.append(i // 3)
-        return indices
-
     def run(self, game_data: GameData, entity):
-        if hasattr(entity, 'bb_model'):
-            game_data.systems['render'].run(game_data, entity.bb_model)
-        else:
-            bb_model = ModelInstance()
-            for bounding_box in entity.bounding_boxes:
-                if hasattr(bounding_box, 'asset'):
-                    if bb_model.asset is None:
-                        bb_model.asset = ModelAsset()
-                        bb_model.asset.attribute_data = {'vertices': (3, []), 'normals': (3, [])}
-                        bb_model.asset.attributes = bounding_box.asset.attributes.copy()
-                        bb_model.asset.shader = bounding_box.asset.shader
-                        bb_model.asset.uniforms = bounding_box.asset.uniforms.copy()
-                        bb_model.asset.color = bounding_box.asset.color.copy()
+        if not game_data.collision_boxes:
+            return
 
-                    vertices = self.convert_to_vec3(bounding_box.asset.attribute_data['vertices'][1])
-                    vertices = list(map(lambda v: bounding_box.model_matrix * v, vertices))
-                    for v in vertices:
-                        bb_model.asset.attribute_data['vertices'][1].extend([*v])
-
-                    for n in bounding_box.asset.attribute_data['normals'][1]:
-                        bb_model.asset.attribute_data['normals'][1].append(n)
-
-            if bb_model.asset is not None:
-                index_buffer = IndexBuffer()
-                index_buffer.draw_type = GL_LINES
-                index_buffer.indices = self.get_line_indices(bb_model.asset.attribute_data['vertices'][1])
-                index_buffer.draw_count = len(index_buffer.indices)
-                bb_model.asset.index_buffers.append(index_buffer)
-                bb_model.asset.current_index_buffer_id = 0
-
-                upload(bb_model.asset)
-
-                # caching the calculated model in the entity
-                entity.bb_model = bb_model
-
-                game_data.systems['render'].run(game_data, entity.bb_model)
+        for bb in entity.bounding_boxes:
+            if hasattr(bb, 'asset'):
+                game_data.systems['render'].run(game_data, bb)

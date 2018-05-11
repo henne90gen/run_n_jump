@@ -5,7 +5,8 @@ import numpy as np
 from pyglet.gl import *
 
 from math_helper import vec3, vec2, identity
-from model import ModelAsset, combine_attributes, upload, ModelInstance, Texture, add_texture_uniform, IndexBuffer
+from model import ModelAsset, upload, ModelInstance, Texture, add_texture_uniform, IndexBuffer, \
+    upload_vertices, upload_indices
 from shader import Shader
 
 
@@ -46,7 +47,10 @@ def load_font(font_path: str = "font/RobotoMono-Regular.ttf", size: int = 48) ->
     return result
 
 
-def generate_vertices(text, font_texture: Texture):
+def generate_vertices(text: str, font_texture: Texture):
+    if type(text) != str:
+        text = str(text)
+
     vertices = []
     uvs = []
 
@@ -102,16 +106,8 @@ def text2d(text: str, position: vec2 = vec2(), color: vec3 = vec3(1.0, 1.0, 1.0)
     font_texture = load_font(size=font_size)
     font_texture.texture_unit = GL_TEXTURE0
     asset.texture = font_texture
-    vertices, uvs = generate_vertices(text, font_texture)
-    asset.attribute_data = {'vertices': (2, vertices), 'uvs': (2, uvs)}
-
     index_buffer = IndexBuffer()
-    index_buffer.draw_type = GL_TRIANGLES
-    index_buffer.indices = list(range(len(vertices)))
-    index_buffer.draw_count = len(index_buffer.indices)
     asset.index_buffers.append(index_buffer)
-
-    upload(asset)
 
     add_texture_uniform(asset.uniforms)
 
@@ -119,13 +115,30 @@ def text2d(text: str, position: vec2 = vec2(), color: vec3 = vec3(1.0, 1.0, 1.0)
     asset.uniforms["u_Offset"] = "position"
     asset.uniforms["u_Color"] = "color"
 
+    upload(asset, GL_DYNAMIC_DRAW)
+
     model = ModelInstance()
     model.model_matrix = identity()
     model.asset = asset
     model.color = color
     model.position = vec3(*position, 0)
     model.name = "Text(" + text.replace("\n", " ").replace("\t", "") + ")"
+    model.text = text
+
+    update_text(model, text)
     return model
+
+
+def update_text(model: ModelInstance, new_text: str):
+    vertices, uvs = generate_vertices(new_text, model.asset.texture)
+    model.asset.attribute_data = {'vertices': (2, vertices), 'uvs': (2, uvs)}
+
+    model.asset.index_buffers[0].draw_type = GL_TRIANGLES
+    model.asset.index_buffers[0].indices = list(range(len(vertices)))
+    model.asset.index_buffers[0].draw_count = len(model.asset.index_buffers[0].indices)
+
+    upload_vertices(model.asset, GL_DYNAMIC_DRAW)
+    upload_indices(model.asset, GL_DYNAMIC_DRAW)
 
 
 def generate_vertices_for_whole_font():

@@ -63,4 +63,8 @@ def cube(size, position: vec3, color: vec3):
     scale(model.model_matrix, model.scale)
     translate(model.model_matrix, model.position)
 
+    model.systems = [
+        'position',
+        'render'
+    ]
     return model

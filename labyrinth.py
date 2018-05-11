@@ -367,7 +367,7 @@ def generate_vertices(arr: np.ndarray, block_size: int):
     return vertices, normals, [(GL_TRIANGLES, indices), (GL_LINES, get_line_indices(indices))], bounding_boxes
 
 
-def labyrinth(block_size: int = 20):
+def labyrinth(block_size: int = 15):
     filename = "labyrinth.png"
     image_array = load_image(filename)
     image_array = mark_edges(image_array)
@@ -414,6 +414,10 @@ def create_labyrinth(row_offset: int, col_offset: int, block_size: int, vertices
     model.scale = LABYRINTH_SCALE
     model.position = vec3((col_offset + block_size / 2) * model.scale, 0, (row_offset + block_size / 2) * model.scale)
     model.name = f"Labyrinth {model.position}"
+    model.systems = [
+        'position',
+        'render'
+    ]
     model.model_matrix = identity()
     scale(model.model_matrix, model.scale)
     translate(model.model_matrix, model.position)

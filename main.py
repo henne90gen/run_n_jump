@@ -16,8 +16,6 @@ class Window(pyglet.window.Window):
     def __init__(self, width, height, resizable: bool = False):
         super(Window, self).__init__(width, height, resizable=resizable)
 
-        self.set_exclusive_mouse(True)
-
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_BLEND)
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
@@ -30,9 +28,11 @@ class Window(pyglet.window.Window):
         self.frame_start_time = datetime.now()
 
         self.projection_matrix = identity()
+        self.mouse_position = vec2()
         self.mouse_movement = vec2()
         self.key_map = {}
         self.game = game.Game()
+        self.game_data = GameData()
 
     def show_average_time(self):
         self.num_frames += 1
@@ -52,17 +52,23 @@ class Window(pyglet.window.Window):
         frame_time = (end - self.frame_start_time).total_seconds()
         self.frame_start_time = datetime.now()
 
-        hot_reload.reload_all(MODULE_WHITELIST)
+        # hot_reload.reload_all(MODULE_WHITELIST)
 
         self.clear()
 
-        game_data = GameData()
-        game_data.frame_time = frame_time
-        game_data.screen_dimensions = vec2(self.width, self.height)
-        game_data.projection_matrix = self.projection_matrix
-        game_data.key_map = self.key_map
-        game_data.mouse_movement = self.mouse_movement
-        self.game.tick(game_data)
+        self.game_data.frame_time = frame_time
+        self.game_data.screen_dimensions = vec2(self.width, self.height)
+        self.game_data.projection_matrix = self.projection_matrix
+        self.game_data.key_map = self.key_map
+        self.game_data.mouse_position = self.mouse_position
+        self.game_data.mouse_movement = self.mouse_movement
+        self.set_exclusive_mouse(not self.game_data.show_overview)
+        show_overview_before = self.game_data.show_overview
+
+        self.game.tick(self.game_data)
+
+        if show_overview_before != self.game_data.show_overview:
+            self.on_resize(self.width, self.height)
 
         # resetting mouse movement after each tick
         self.mouse_movement = vec2()
@@ -72,6 +78,24 @@ class Window(pyglet.window.Window):
     def on_resize(self, width, height):
         glViewport(0, 0, width, height)
 
+        if self.game_data.show_overview:
+            self.orthographic_projection(width, height)
+        else:
+            self.perspective_projection(width, height)
+
+    def orthographic_projection(self, width, height):
+        z_near = 1
+        z_far = 500
+        temp1 = -2 / (z_far - z_near)
+        temp2 = -1 * (z_far + z_near) / (z_far - z_near)
+        self.projection_matrix = mat4([
+            [2 / width, 0, 0, 0],
+            [0, 2 / height, 0, 0],
+            [0, 0, temp1, temp2],
+            [0, 0, 0, 1],
+        ])
+
+    def perspective_projection(self, width, height):
         aspect_ratio = width / height
         fovy = 75
         z_near = 1
@@ -98,6 +122,7 @@ class Window(pyglet.window.Window):
     # noinspection PyMethodOverriding
     def on_mouse_motion(self, x, y, dx, dy):
         self.mouse_movement = vec2(dx, dy)
+        self.mouse_position = vec2(x, y)
 
 
 if __name__ == '__main__':

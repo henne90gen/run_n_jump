@@ -4,13 +4,14 @@ import pyglet
 
 import logging_config
 from camera import Camera
+from debug_ui import create_debug_ui
 from game_data import GameData
 from helper import Timer
 from labyrinth import labyrinth, create_labyrinth
 from math_helper import vec2, vec3, identity, rotate, translate
+from quad_tree import QuadTree
 from systems import RenderSystem, PositionSystem, InputSystem, MovementInputSystem, AccelerationSystem, \
-    BoundingBoxRenderSystem
-from text import text2d
+    BoundingBoxRenderSystem, GlobalInputSystem, DebugUISystem, CollisionSystem
 
 
 class Game:
@@ -22,42 +23,61 @@ class Game:
         camera_angle = vec2(0, 120)
         self.camera = Camera(camera_position, camera_angle)
 
+        self.frame_counter = -1
+
         self.light_position = vec3(50, 0, 50)
-        # self.light_position = vec3(0, 20, 0)
         self.light_direction = vec3(0, -1, 0)
 
-        size = 5
         self.entities = [
             self.camera,
-            text2d(str(vec3(0, 0, size * 5)), position=vec2(100, 80), font_size=11),
         ]
+
         self.labyrinth_generator = labyrinth()
-        self.labyrinth_counter = -1
 
         self.systems = {
             "input": InputSystem(),
             "movement_input": MovementInputSystem(),
-            # "collision": CollisionSystem(),
+            "collision": CollisionSystem(),
             "acceleration": AccelerationSystem(),
             "position": PositionSystem(),
             "render": RenderSystem(),
-            "bbrender": BoundingBoxRenderSystem()
+            "bbrender": BoundingBoxRenderSystem(),
+            "debug_ui": DebugUISystem(),
+            "global_input": GlobalInputSystem()
         }
 
+        self.ui_elements = [
+            *create_debug_ui(map(lambda s: s.name, self.systems.values())),
+        ]
+
     def tick(self, game_data: GameData):
-        game_data.entities = self.entities
+        self.frame_counter += 1
+        self.finish_loading_labyrinth()
+
+        game_data.entities = build_quad_tree(self.entities)
         game_data.systems = self.systems
+        game_data.camera = self.camera
+        if not game_data.show_overview:
+            game_data.player_configuration = (self.camera.position, self.camera.rotation)
 
         view_matrix = identity()
-        translate(view_matrix, vec3(-self.camera.position.x, self.camera.position.y, -self.camera.position.z))
+        translate(view_matrix, self.camera.position * -1)
         rotate(view_matrix, self.camera.rotation)
         game_data.view_matrix = view_matrix
 
         game_data.light_position = self.camera.position
         game_data.light_direction = self.light_direction
 
-        self.labyrinth_counter += 1
-        if self.labyrinth_counter % 20 == 0 and self.labyrinth_generator is not None:
+        self.run_systems(game_data)
+
+        for index, element in enumerate(self.ui_elements):
+            if self.frame_counter % len(self.ui_elements) - index == 0:
+                self.systems['debug_ui'].run(game_data, element)
+            self.systems['position'].run(game_data, element)
+            self.systems['render'].run(game_data, element)
+
+    def finish_loading_labyrinth(self):
+        if self.frame_counter % 20 == 0 and self.labyrinth_generator is not None:
             try:
                 lab_params = self.labyrinth_generator.__next__()
                 if lab_params is not None:
@@ -66,20 +86,44 @@ class Game:
                 self.log.info("Done loading labyrinth")
                 self.labyrinth_generator = None
 
-        with Timer(self.log, "MainLoop"):
+    def run_systems(self, game_data):
+        self.systems['global_input'].run(game_data, None)
+
+        with Timer(self.log, "MainLoop") as main_timer:
+            query_positions = self.get_query_positions(game_data)
+            entities = []
+            for position in query_positions:
+                entities.extend(game_data.entities.query(position))
+
+            self.log.debug(f"{len(entities)} entities")
+            for entity in entities:
+                for system_name in entity.systems:
+                    if system_name not in self.systems:
+                        continue
+
+                    system = self.systems[system_name]
+                    if system.supports(entity):
+                        self.log.debug(f"Running system {system} on entity {entity}")
+                        system.run(game_data, entity)
+
             for system in self.systems.values():
-                with Timer(self.log, system.name):
-                    for entity in self.entities:
-                        direction = vec2(1).rotate(self.camera.rotation.y - 90)
-                        forward_direction = vec3(direction.x, 0, direction.y) * 20
+                system.reset(game_data)
 
-                        if (self.camera.position + forward_direction - entity.position).length > 75:
-                            continue
+        game_data.debug_data["total_time"] = main_timer.time_diff
 
-                        if system.supports(entity):
-                            self.log.debug(f"Running system {system} on entity {entity}")
-                            system.run(game_data, entity)
-                    system.reset(game_data)
+    def get_query_positions(self, game_data: GameData):
+        if not game_data.show_overview:
+            return [self.camera.position]
+
+        position = vec2(
+            game_data.mouse_position.x,
+            game_data.screen_dimensions.y - game_data.mouse_position.y
+        )
+        position -= game_data.screen_dimensions / 2
+        position += vec2(250, 250)
+
+        position = vec3(position.x, 0, position.y)
+        return position, game_data.player_configuration[0]
 
     def handle_key(self, symbol, modifiers, pressed):
         released = not pressed
@@ -88,3 +132,10 @@ class Game:
             exit(0)
         elif symbol != pyglet.window.key.ESCAPE:
             self.log.debug("Key event:", symbol, modifiers, pressed)
+
+
+def build_quad_tree(entities: list) -> QuadTree:
+    root = QuadTree(vec2(500, 500), vec2(1000, 1000), 2)
+    for entity in entities:
+        root.add(entity)
+    return root

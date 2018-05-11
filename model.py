@@ -47,8 +47,7 @@ class ModelAsset:
     attribute_data = None
     uniforms = None
 
-    def __init__(self, use_index_buffer: bool = True):
-        self.use_index_buffer = use_index_buffer
+    def __init__(self):
         self.color = vec3(1.0, 1.0, 1.0)
 
         self.attributes = []
@@ -108,13 +107,38 @@ def combine_attributes(vertex_count, *attributes):
     return vertex_data
 
 
-def upload(asset: ModelAsset):
+def upload(asset: ModelAsset, gl_usage=GL_STATIC_DRAW):
     asset.vertex_array_id = GLuint()
     glGenVertexArrays(1, asset.vertex_array_id)
 
     asset.vertex_buffer_id = GLuint()
     glGenBuffers(1, asset.vertex_buffer_id)
 
+    upload_vertices(asset, gl_usage)
+
+    upload_indices(asset, gl_usage)
+
+    if asset.texture is not None:
+        glBindTexture(GL_TEXTURE_2D, asset.texture.id)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+
+        # noinspection PyCallingNonCallable,PyTypeChecker
+        texture_data = (GLubyte * len(asset.texture.buffer.flat))(*asset.texture.buffer.flatten())
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, asset.texture.width, asset.texture.height, 0, asset.texture.format,
+                     asset.texture.type, texture_data)
+
+
+def upload_indices(asset: ModelAsset, gl_usage=GL_STATIC_DRAW):
+    for buffer in asset.index_buffers:
+        # noinspection PyCallingNonCallable,PyTypeChecker
+        index_data_gl = (GLint * len(buffer.indices))(*buffer.indices)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.id)
+        index_buffer_size = sizeof(index_data_gl)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, gl_usage)
+
+
+def upload_vertices(asset: ModelAsset, gl_usage=GL_STATIC_DRAW):
     vertex_count = -1
     data = []
     for key in asset.attribute_data:
@@ -131,25 +155,7 @@ def upload(asset: ModelAsset):
     vertex_data_gl = (GLfloat * len(vertex_data))(*vertex_data)
     glBindBuffer(GL_ARRAY_BUFFER, asset.vertex_buffer_id)
     vertex_buffer_size = sizeof(vertex_data_gl)
-    glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertex_data_gl, GL_STATIC_DRAW)
-
-    if asset.use_index_buffer:
-        for buffer in asset.index_buffers:
-            # noinspection PyCallingNonCallable,PyTypeChecker
-            index_data_gl = (GLint * len(buffer.indices))(*buffer.indices)
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.id)
-            index_buffer_size = sizeof(index_data_gl)
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, GL_STATIC_DRAW)
-
-    if asset.texture is not None:
-        glBindTexture(GL_TEXTURE_2D, asset.texture.id)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
-        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
-
-        # noinspection PyCallingNonCallable,PyTypeChecker
-        texture_data = (GLubyte * len(asset.texture.buffer.flat))(*asset.texture.buffer.flatten())
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, asset.texture.width, asset.texture.height, 0, asset.texture.format,
-                     asset.texture.type, texture_data)
+    glBufferData(GL_ARRAY_BUFFER, vertex_buffer_size, vertex_data_gl, gl_usage)
 
 
 def load_blender_file(path):
