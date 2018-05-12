@@ -116,3 +116,10 @@ def print_quad_tree(tree: QuadTree, indentation: int = 0):
             text += "\n"
 
     return text
+
+
+def build_quad_tree(entities: list) -> QuadTree:
+    root = QuadTree(vec2(500, 500), vec2(1000, 1000), 2)
+    for entity in entities:
+        root.add(entity)
+    return root

@@ -9,7 +9,7 @@ from game_data import GameData
 from helper import Timer
 from labyrinth import labyrinth, create_labyrinth
 from math_helper import vec2, vec3, identity, rotate, translate
-from quad_tree import QuadTree
+from quad_tree import QuadTree, build_quad_tree
 from systems import RenderSystem, PositionSystem, InputSystem, MovementInputSystem, AccelerationSystem, \
     BoundingBoxRenderSystem, GlobalInputSystem, DebugUISystem, CollisionSystem
 
@@ -132,10 +132,3 @@ class Game:
             exit(0)
         elif symbol != pyglet.window.key.ESCAPE:
             self.log.debug("Key event:", symbol, modifiers, pressed)
-
-
-def build_quad_tree(entities: list) -> QuadTree:
-    root = QuadTree(vec2(500, 500), vec2(1000, 1000), 2)
-    for entity in entities:
-        root.add(entity)
-    return root
