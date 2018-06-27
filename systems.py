@@ -357,10 +357,22 @@ class RenderSystem(System):
         else:
             entity.asset.current_index_buffer_id = 1 % len(entity.asset.index_buffers)
 
+        if len(game_data.lights) != entity.asset.shader.number_of_lights:
+            entity.asset.shader.compile(len(game_data.lights))
+
         entity.asset.shader.bind()
 
-        glBindVertexArray(entity.asset.vertex_array_id)
+        self.bind_data(entity)
+        self.bind_uniforms(entity, game_data)
+        self.bind_texture(entity)
 
+        self.draw(entity)
+
+        entity.asset.shader.unbind()
+
+    @staticmethod
+    def bind_data(entity):
+        glBindVertexArray(entity.asset.vertex_array_id)
         glBindBuffer(GL_ARRAY_BUFFER, entity.asset.vertex_buffer_id)
         for position, name, gl_type, size, stride, offset in entity.asset.attributes:
             glVertexAttribPointer(position, size, gl_type,
@@ -368,9 +380,23 @@ class RenderSystem(System):
             glEnableVertexAttribArray(position)
             glBindAttribLocation(entity.asset.shader.handle,
                                  position, bytes(name, "utf-8"))
-
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.asset.index_buffers[entity.asset.current_index_buffer_id].id)
 
+    def draw(self, entity):
+        draw_count = entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count
+        glDrawElements(entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_type,
+                       draw_count, GL_UNSIGNED_INT,
+                       None)
+        self.vertex_count += draw_count
+
+    def bind_texture(self, entity):
+        if entity.asset.texture is not None:
+            texture_id = entity.asset.texture.id
+            texture_unit = entity.asset.texture.texture_unit
+            glActiveTexture(texture_unit)
+            glBindTexture(GL_TEXTURE_2D, texture_id)
+
+    def bind_uniforms(self, entity, game_data):
         for uniform_name in entity.asset.uniforms:
             data_name = entity.asset.uniforms[uniform_name]
             mapping = f"{uniform_name}=>{data_name}"
@@ -393,20 +419,6 @@ class RenderSystem(System):
                     uniform_name, getattr(game_data, data_name))
             else:
                 self.log.warning(f"Could not find any data for {mapping}")
-
-        if entity.asset.texture is not None:
-            texture_id = entity.asset.texture.id
-            texture_unit = entity.asset.texture.texture_unit
-            glActiveTexture(texture_unit)
-            glBindTexture(GL_TEXTURE_2D, texture_id)
-
-        draw_count = entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count
-        glDrawElements(entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_type,
-                       draw_count, GL_UNSIGNED_INT,
-                       None)
-        self.vertex_count += draw_count
-
-        entity.asset.shader.unbind()
 
 
 class BoundingBoxRenderSystem(System):

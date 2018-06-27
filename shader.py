@@ -10,28 +10,39 @@ from pyglet.gl import *
 import logging_config
 from math_helper import mat4, vec3, vec2
 
+NUMBER_OF_LIGHTS_PLACEHOLDER = "LIGHTS"
+
 
 class Shader:
-    def __init__(self, vertex_shader_name: str = "", fragment_shader_name: str = ""):
+    def __init__(self, vertex_shader_name: str = "", fragment_shader_name: str = "", number_of_lights: int = 2):
         self.log = logging_config.getLogger(__name__)
         self.log.setLevel(logging.INFO)
 
-        # create the program handle
-        self.handle = glCreateProgram()
-        # we are not linked yet
+        self.handle = None
         self.linked = False
+        self.vertex_shader_name = vertex_shader_name
+        self.fragment_shader_name = fragment_shader_name
 
-        if len(vertex_shader_name) > 0:
-            with open(vertex_shader_name, "r") as f:
+        self.number_of_lights = number_of_lights
+        self.compile(number_of_lights)
+
+    def compile(self, number_of_lights: int):
+        self.number_of_lights = number_of_lights
+
+        if self.handle is not None:
+            glDeleteProgram(self.handle)
+        self.handle = glCreateProgram()
+
+        if len(self.vertex_shader_name) > 0:
+            with open(self.vertex_shader_name, "r") as f:
                 vertex_source = f.readlines()
             self.create_shader(vertex_source, GL_VERTEX_SHADER)
 
-        if len(fragment_shader_name) > 0:
-            with open(fragment_shader_name, "r") as f:
+        if len(self.fragment_shader_name) > 0:
+            with open(self.fragment_shader_name, "r") as f:
                 fragment_source = f.readlines()
             self.create_shader(fragment_source, GL_FRAGMENT_SHADER)
 
-        # attempt to link the program
         self.link()
 
     def create_shader(self, strings, t):
@@ -44,7 +55,7 @@ class Shader:
         shader = glCreateShader(t)
 
         # convert the source strings into a ctypes pointer-to-char array, and upload them
-        string_buffers = [create_string_buffer(bytes(s, "utf-8")) for s in strings]
+        string_buffers = [self.process_and_convert_to_string_buffer(s) for s in strings]
 
         # noinspection PyTypeChecker, PyCallingNonCallable
         src = (c_char_p * count)(*map(addressof, string_buffers))
@@ -99,16 +110,33 @@ class Shader:
         # so this should probably be a class method instead
         glUseProgram(0)
 
-    def uniform(self, name: str, data):
+    def uniform(self, name: str, data, index: int = -1):
+        if index > -1:
+            name = f"{name}[{index}]"
+
+        self.log.debug(f"Binding {name} with data: {data}")
+
         data_type = type(data)
         if data_type == mat4:
             self.uniform_matrixf(name, data)
+
         elif data_type in [vec2, vec3]:
             self.uniformf(name, *data)
+
         elif data_type == float:
             self.uniformf(name, data)
+
         elif data_type == int:
             self.uniformi(name, data)
+
+        elif data_type == list:
+            for index, d in enumerate(data):
+                self.uniform(name, d, index)
+
+        elif data_type == dict:
+            for key in data:
+                self.uniform(f"{name}.{key}", data[key])
+
         else:
             self.log.error(f"Could not bind {name}")
             return
@@ -146,3 +174,8 @@ class Shader:
         mat_values = mat.to_list()
         # noinspection PyCallingNonCallable, PyTypeChecker
         glUniformMatrix4fv(location, 1, True, (c_float * 16)(*mat_values))
+
+    def process_and_convert_to_string_buffer(self, s: str):
+        if NUMBER_OF_LIGHTS_PLACEHOLDER in s:
+            s = s.replace(NUMBER_OF_LIGHTS_PLACEHOLDER, str(self.number_of_lights))
+        return create_string_buffer(bytes(s, "utf-8"))

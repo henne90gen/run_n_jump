@@ -90,7 +90,7 @@ def add_mvp_uniforms(uniforms):
 
 
 def add_light_uniforms(uniforms):
-    uniforms['u_LightPosition'] = "light_position"
+    uniforms['u_Lights'] = "lights"
     uniforms['u_LightDirection'] = "light_direction"
 
 

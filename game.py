@@ -1,4 +1,5 @@
 import logging
+import random
 
 import pyglet
 
@@ -9,7 +10,7 @@ from game_data import GameData
 from helper import Timer
 from labyrinth import labyrinth, create_labyrinth
 from math_helper import vec2, vec3, identity, rotate, translate
-from quad_tree import QuadTree, build_quad_tree
+from quad_tree import build_quad_tree
 from systems import RenderSystem, PositionSystem, InputSystem, MovementInputSystem, AccelerationSystem, \
     BoundingBoxRenderSystem, GlobalInputSystem, DebugUISystem, CollisionSystem
 
@@ -65,7 +66,9 @@ class Game:
         rotate(view_matrix, self.camera.rotation)
         game_data.view_matrix = view_matrix
 
-        game_data.light_position = self.camera.position
+        game_data.lights = place_lights(game_data.lights)
+        # game_data.lights.append({'position': self.camera.position, 'color': vec3(1, 1, 1), 'power': 100.0})
+        game_data.number_of_lights = len(game_data.lights)
         game_data.light_direction = self.light_direction
 
         self.run_systems(game_data)
@@ -131,4 +134,22 @@ class Game:
         if symbol == pyglet.window.key.ESCAPE and released:
             exit(0)
         elif symbol != pyglet.window.key.ESCAPE:
-            self.log.debug("Key event:", symbol, modifiers, pressed)
+            self.log.debug(f"Key event: {symbol} {modifiers} {pressed}")
+
+
+def place_lights(current_lights: list):
+    if len(current_lights) == 0:
+        return [{
+            'position': vec3(0, 0, 0),
+            'color': vec3(random.random(), random.random(), random.random()),
+            'power': random.uniform(1.0, 50.0)
+        } for _ in range(10)]
+    current_lights = list(map(move_light, current_lights))
+    return current_lights
+
+
+def move_light(light: dict):
+    x = random.random() - 0.4
+    z = random.random() - 0.4
+    light['position'] += vec3(x, 0, z)
+    return light

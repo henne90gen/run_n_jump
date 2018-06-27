@@ -16,7 +16,7 @@ class GameData:
     view_matrix = identity()
     projection_matrix = identity()
 
-    light_position = vec3()
+    lights = []
     light_direction = vec3()
 
     sensitivity = 0.5
