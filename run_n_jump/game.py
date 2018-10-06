@@ -13,6 +13,7 @@ from .math_helper import vec2, vec3, identity, rotate, translate
 from .quad_tree import build_quad_tree
 from .systems import RenderSystem, PositionSystem, InputSystem, MovementInputSystem, AccelerationSystem, \
     BoundingBoxRenderSystem, GlobalInputSystem, DebugUISystem, CollisionSystem
+from .cube import cube
 
 
 class Game:
@@ -20,8 +21,8 @@ class Game:
         self.log = logging_config.getLogger(__name__)
         self.log.setLevel(logging.INFO)
 
-        camera_position = vec3(20, 0, 20)
-        camera_angle = vec2(0, 120)
+        camera_position = vec3(30, 0, 15)
+        camera_angle = vec2(0, -90)
         self.camera = Camera(camera_position, camera_angle)
 
         self.frame_counter = -1
@@ -32,6 +33,10 @@ class Game:
         self.entities = [
             self.camera,
         ]
+
+        for i in range(1, 5):
+            entity = cube(1, vec3(i*10, 0, i*10), vec3(1, 0, 1))
+            self.entities.append(entity)
 
         self.labyrinth_generator = labyrinth()
 
@@ -69,7 +74,8 @@ class Game:
 
         game_data.lights = place_lights(game_data.lights)
         if len(game_data.lights) < 5:
-            game_data.lights.append({'position': self.camera.position, 'color': vec3(1, 1, 1), 'power': 100.0})
+            game_data.lights.append(
+                {'position': self.camera.position, 'color': vec3(1, 1, 1), 'power': 100.0})
         game_data.number_of_lights = len(game_data.lights)
         game_data.light_direction = self.light_direction
 
