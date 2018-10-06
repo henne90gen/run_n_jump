@@ -1,7 +1,7 @@
 import logging
 
 import pyglet
-from pyglet.gl import glBindVertexArray, glBindBuffer, GL_ARRAY_BUFFER, glVertexAttribPointer, GL_FALSE, glEnableVertexAttribPointer
+from pyglet.gl import glBindVertexArray, glBindBuffer, GL_ARRAY_BUFFER, glVertexAttribPointer, GL_FALSE
 from pyglet.gl import glEnableVertexAttribArray, glBindAttribLocation, GL_ELEMENT_ARRAY_BUFFER, glDrawElements, GL_UNSIGNED_INT
 from pyglet.gl import glActiveTexture, glBindTexture, GL_TEXTURE_2D
 

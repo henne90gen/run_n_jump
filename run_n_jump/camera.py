@@ -26,7 +26,6 @@ class Camera:
         self.speed = 1
         self.max_speed = 0.25
         self.bounding_boxes = [camera_bounding_box()]
-        # self.text = "Hello"
         self.systems = [
             'input',
             'movement_input',
@@ -34,7 +33,6 @@ class Camera:
             'acceleration',
             'position',
             'render',
-            # 'debug_ui'
         ]
 
     def __repr__(self):
