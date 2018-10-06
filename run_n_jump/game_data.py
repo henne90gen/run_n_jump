@@ -1,6 +1,6 @@
-from camera import Camera
-from math_helper import identity, vec3, vec2
-from quad_tree import QuadTree
+from .camera import Camera
+from .math_helper import identity, vec3, vec2
+from .quad_tree import QuadTree
 
 
 class GameData:

@@ -7,8 +7,8 @@ from ctypes import (
 
 from pyglet.gl import *
 
-import logging_config
-from math_helper import mat4, vec3, vec2
+import run_n_jump.logging_config as logging_config
+from .math_helper import mat4, vec3, vec2
 
 NUMBER_OF_LIGHTS_PLACEHOLDER = "LIGHTS"
 

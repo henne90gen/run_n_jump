@@ -2,10 +2,10 @@ from ctypes import c_float, sizeof
 
 from pyglet.gl import *
 
-from math_helper import vec3
-from model import ModelAsset, IndexBuffer, upload, add_mvp_uniforms, add_light_uniforms, \
+from .math_helper import vec3
+from .model import ModelAsset, IndexBuffer, upload, add_mvp_uniforms, add_light_uniforms, \
     get_line_indices
-from shader import Shader
+from .shader import Shader
 
 
 def rectangular_prism_vertices(size: vec3):

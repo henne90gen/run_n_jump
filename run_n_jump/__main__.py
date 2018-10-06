@@ -4,10 +4,10 @@ from datetime import datetime
 import pyglet
 from pyglet.gl import *
 
-import game
-import hot_reload
-from math_helper import identity, mat4, vec2
-from game_data import GameData
+import run_n_jump.game as game
+import run_n_jump.hot_reload as hot_reload
+from .math_helper import identity, mat4, vec2
+from .game_data import GameData
 
 MODULE_WHITELIST = ['game']
 
@@ -46,7 +46,6 @@ class Window(pyglet.window.Window):
             self.start_time = end
             self.num_frames = 0
 
-    # noinspection PyMethodOverriding
     def on_draw(self, *args):
         end = datetime.now()
         frame_time = (end - self.frame_start_time).total_seconds()
@@ -114,12 +113,10 @@ class Window(pyglet.window.Window):
         self.key_map[symbol] = True
         self.game.handle_key(symbol, modifiers, True)
 
-    # noinspection PyMethodOverriding
     def on_key_release(self, symbol, modifiers):
         self.key_map[symbol] = False
         self.game.handle_key(symbol, modifiers, False)
 
-    # noinspection PyMethodOverriding
     def on_mouse_motion(self, x, y, dx, dy):
         self.mouse_movement = vec2(dx, dy)
         self.mouse_position = vec2(x, y)

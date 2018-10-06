@@ -2,10 +2,10 @@ from ctypes import sizeof, c_float
 
 from pyglet.gl import *
 
-from math_helper import vec3, translate, scale
-from model import ModelAsset, load_blender_file, upload, ModelInstance, add_mvp_uniforms, \
+from .math_helper import vec3, translate, scale
+from .model import ModelAsset, load_blender_file, upload, ModelInstance, add_mvp_uniforms, \
     add_light_uniforms, BoundingBox, IndexBuffer
-from shader import Shader
+from .shader import Shader
 
 
 def generate_bounding_box(vertices_in: list, normals: list):

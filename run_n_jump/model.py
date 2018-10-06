@@ -2,7 +2,7 @@ from ctypes import sizeof
 
 from pyglet.gl import *
 
-from math_helper import identity, vec3
+from .math_helper import identity, vec3
 
 
 class Texture:

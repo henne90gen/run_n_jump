@@ -4,11 +4,11 @@ import numpy as np
 from PIL import Image
 from pyglet.gl import *
 
-from math_helper import identity, vec3, translate, scale, vec2
-from model import ModelAsset, ModelInstance, upload, add_mvp_uniforms, add_light_uniforms, \
+from .math_helper import identity, vec3, translate, scale, vec2
+from .model import ModelAsset, ModelInstance, upload, add_mvp_uniforms, add_light_uniforms, \
     BoundingBox, IndexBuffer, get_line_indices
-from rectangle import rectangular_prism_vertices
-from shader import Shader
+from .rectangle import rectangular_prism_vertices
+from .shader import Shader
 
 LABYRINTH_SCALE = 5
 

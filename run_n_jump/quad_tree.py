@@ -1,6 +1,6 @@
 from typing import List
 
-from math_helper import vec2, vec3
+from .math_helper import vec2, vec3
 
 
 class QuadTree:

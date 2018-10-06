@@ -4,12 +4,13 @@ import freetype
 import numpy as np
 from pyglet import gl
 
-from math_helper import vec3, vec2, identity
-from model import ModelAsset, upload, ModelInstance, Texture, add_texture_uniform, IndexBuffer, \
+from .math_helper import vec3, vec2, identity
+from .model import ModelAsset, upload, ModelInstance, Texture, add_texture_uniform, IndexBuffer, \
     upload_vertices, upload_indices
-from shader import Shader
+from .shader import Shader
 
 
+#pylint: disable=E1101
 def load_font(font_path: str = "font/RobotoMono-Regular.ttf", size: int = 48) -> Texture:
     # Load font
     face = freetype.Face(font_path)
@@ -18,7 +19,8 @@ def load_font(font_path: str = "font/RobotoMono-Regular.ttf", size: int = 48) ->
     # Determine largest glyph size
     char_width, char_height, ascender, descender = 0, 0, 0, 0
     for c in range(32, 128):
-        face.load_char(chr(c), freetype.FT_LOAD_RENDER | freetype.FT_LOAD_FORCE_AUTOHINT)
+        face.load_char(chr(c), freetype.FT_LOAD_RENDER |
+                       freetype.FT_LOAD_FORCE_AUTOHINT)
         bitmap = face.glyph.bitmap
         char_width = max(char_width, bitmap.width)
         ascender = max(ascender, face.glyph.bitmap_top)
@@ -29,7 +31,8 @@ def load_font(font_path: str = "font/RobotoMono-Regular.ttf", size: int = 48) ->
     data = np.zeros((char_height * 6, char_width * 16), dtype=np.ubyte)
     for j in range(6):
         for i in range(16):
-            face.load_char(chr(32 + j * 16 + i), freetype.FT_LOAD_RENDER | freetype.FT_LOAD_FORCE_AUTOHINT)
+            face.load_char(
+                chr(32 + j * 16 + i), freetype.FT_LOAD_RENDER | freetype.FT_LOAD_FORCE_AUTOHINT)
             bitmap = face.glyph.bitmap
             x = i * char_width + face.glyph.bitmap_left
             y = j * char_height + ascender - face.glyph.bitmap_top
@@ -71,7 +74,8 @@ def generate_vertices(text: str, font_texture: Texture):
             current_position += vec2(4 * character_width)
         elif i >= 32:
             vertices.extend([current_position.x, current_position.y])
-            vertices.extend([current_position.x + character_width, current_position.y])
+            vertices.extend(
+                [current_position.x + character_width, current_position.y])
             vertices.extend(
                 [current_position.x + character_width, current_position.y + character_height])
 
@@ -82,7 +86,8 @@ def generate_vertices(text: str, font_texture: Texture):
             vertices.extend([current_position.x, current_position.y])
             vertices.extend(
                 [current_position.x + character_width, current_position.y + character_height])
-            vertices.extend([current_position.x, current_position.y + character_height])
+            vertices.extend(
+                [current_position.x, current_position.y + character_height])
 
             uvs.extend([(x) * dx, (y + 1) * dy])
             uvs.extend([(x + 1) * dx, (y) * dy])
@@ -95,7 +100,8 @@ def generate_vertices(text: str, font_texture: Texture):
 
 def text2d(text: str, position: vec2 = vec2(), color: vec3 = vec3(1.0, 1.0, 1.0), font_size: int = 11):
     asset = ModelAsset()
-    asset.shader = Shader("shaders/text_vertex.glsl", "shaders/text_fragment.glsl")
+    asset.shader = Shader("shaders/text_vertex.glsl",
+                          "shaders/text_fragment.glsl")
     stride = 4 * sizeof(c_float)
     attributes = [
         (0, 'a_Position', gl.GL_FLOAT, 2, stride, 0),
@@ -135,7 +141,8 @@ def update_text(model: ModelInstance, new_text: str):
 
     model.asset.index_buffers[0].draw_type = gl.GL_TRIANGLES
     model.asset.index_buffers[0].indices = list(range(len(vertices)))
-    model.asset.index_buffers[0].draw_count = len(model.asset.index_buffers[0].indices)
+    model.asset.index_buffers[0].draw_count = len(
+        model.asset.index_buffers[0].indices)
 
     upload_vertices(model.asset, gl.GL_DYNAMIC_DRAW)
     upload_indices(model.asset, gl.GL_DYNAMIC_DRAW)

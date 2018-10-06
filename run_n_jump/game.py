@@ -3,15 +3,15 @@ import random
 
 import pyglet
 
-import logging_config
-from camera import Camera
-from debug_ui import create_debug_ui
-from game_data import GameData
-from helper import Timer
-from labyrinth import labyrinth, create_labyrinth
-from math_helper import vec2, vec3, identity, rotate, translate
-from quad_tree import build_quad_tree
-from systems import RenderSystem, PositionSystem, InputSystem, MovementInputSystem, AccelerationSystem, \
+import run_n_jump.logging_config as logging_config
+from .camera import Camera
+from .debug_ui import create_debug_ui
+from .game_data import GameData
+from .helper import Timer
+from .labyrinth import labyrinth, create_labyrinth
+from .math_helper import vec2, vec3, identity, rotate, translate
+from .quad_tree import build_quad_tree
+from .systems import RenderSystem, PositionSystem, InputSystem, MovementInputSystem, AccelerationSystem, \
     BoundingBoxRenderSystem, GlobalInputSystem, DebugUISystem, CollisionSystem
 
 
@@ -59,7 +59,8 @@ class Game:
         game_data.systems = self.systems
         game_data.camera = self.camera
         if not game_data.show_overview:
-            game_data.player_configuration = (self.camera.position, self.camera.rotation)
+            game_data.player_configuration = (
+                self.camera.position, self.camera.rotation)
 
         view_matrix = identity()
         translate(view_matrix, self.camera.position * -1)
@@ -67,7 +68,8 @@ class Game:
         game_data.view_matrix = view_matrix
 
         game_data.lights = place_lights(game_data.lights)
-        # game_data.lights.append({'position': self.camera.position, 'color': vec3(1, 1, 1), 'power': 100.0})
+        if len(game_data.lights) < 5:
+            game_data.lights.append({'position': self.camera.position, 'color': vec3(1, 1, 1), 'power': 100.0})
         game_data.number_of_lights = len(game_data.lights)
         game_data.light_direction = self.light_direction
 
@@ -106,7 +108,8 @@ class Game:
 
                     system = self.systems[system_name]
                     if system.supports(entity):
-                        self.log.debug(f"Running system {system} on entity {entity}")
+                        self.log.debug(
+                            f"Running system {system} on entity {entity}")
                         system.run(game_data, entity)
 
             for system in self.systems.values():
@@ -151,5 +154,9 @@ def place_lights(current_lights: list):
 def move_light(light: dict):
     x = random.random() - 0.4
     z = random.random() - 0.4
-    light['position'] += vec3(x, 0, z)
+    if random.random() < 0.6:
+        direction = 1
+    else:
+        direction = -1
+    light['position'] += vec3(x, 0, z) * direction
     return light

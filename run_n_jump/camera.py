@@ -1,5 +1,5 @@
-from math_helper import vec3, vec2, identity
-from model import BoundingBox
+from .math_helper import vec3, vec2, identity
+from .model import BoundingBox
 
 
 def camera_bounding_box():
@@ -26,13 +26,15 @@ class Camera:
         self.speed = 1
         self.max_speed = 0.25
         self.bounding_boxes = [camera_bounding_box()]
+        # self.text = "Hello"
         self.systems = [
             'input',
             'movement_input',
             'collision',
             'acceleration',
             'position',
-            'render'
+            'render',
+            # 'debug_ui'
         ]
 
     def __repr__(self):

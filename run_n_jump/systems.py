@@ -2,11 +2,11 @@ import logging
 
 from pyglet.gl import *
 
-import logging_config
-from game_data import GameData
-from math_helper import identity, translate, vec3, rotate, vec2, scale, dot, mat4
-from model import BoundingBox
-from text import update_text
+import run_n_jump.logging_config as logging_config
+from .game_data import GameData
+from .math_helper import identity, translate, vec3, rotate, vec2, scale, dot, mat4
+from .model import BoundingBox
+from .text import update_text
 
 
 class System:
