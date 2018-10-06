@@ -5,7 +5,12 @@ from ctypes import (
     POINTER, addressof
 )
 
-from pyglet.gl import *
+from pyglet.gl import glCreateProgram, glDeleteProgram, GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, glCreateShader
+from pyglet.gl import glCompileShader, glGetShaderiv, glShaderSource, GL_COMPILE_STATUS, glGetShaderInfoLog
+from pyglet.gl import glAttachShader, GL_INFO_LOG_LENGTH, glLinkProgram, glGetProgramiv, GL_LINK_STATUS
+from pyglet.gl import glGetProgramInfoLog, glUseProgram, glGetUniformLocation, glUniform1f, glUniform2f
+from pyglet.gl import glUniform3f, glUniform4f, glUniformMatrix4fv, glUniform1i, glUniform2i, glUniform3i
+from pyglet.gl import glUniform4i
 
 import run_n_jump.logging_config as logging_config
 from .math_helper import mat4, vec3, vec2
@@ -55,11 +60,13 @@ class Shader:
         shader = glCreateShader(t)
 
         # convert the source strings into a ctypes pointer-to-char array, and upload them
-        string_buffers = [self.process_and_convert_to_string_buffer(s) for s in strings]
+        string_buffers = [
+            self.process_and_convert_to_string_buffer(s) for s in strings]
 
         # noinspection PyTypeChecker, PyCallingNonCallable
         src = (c_char_p * count)(*map(addressof, string_buffers))
-        glShaderSource(shader, count, cast(pointer(src), POINTER(POINTER(c_char))), None)
+        glShaderSource(shader, count, cast(
+            pointer(src), POINTER(POINTER(c_char))), None)
 
         # compile the shader
         glCompileShader(shader)
@@ -148,9 +155,11 @@ class Shader:
         # check there are 1-4 values
         if len(vals) in range(1, 5):
             vals = list(map(c_float, vals))
-            location = glGetUniformLocation(self.handle, c_char_p(name.encode("utf-8")))
+            location = glGetUniformLocation(
+                self.handle, c_char_p(name.encode("utf-8")))
             # select the correct function
-            uniform_functions = {1: glUniform1f, 2: glUniform2f, 3: glUniform3f, 4: glUniform4f}
+            uniform_functions = {1: glUniform1f,
+                                 2: glUniform2f, 3: glUniform3f, 4: glUniform4f}
             uniform_functions[len(vals)](location, *vals)
 
     def uniformi(self, name: str, *vals):
@@ -160,8 +169,10 @@ class Shader:
         if len(vals) in range(1, 5):
             vals = list(map(c_int, vals))
             # select the correct function
-            location = glGetUniformLocation(self.handle, c_char_p(name.encode("utf-8")))
-            uniform_functions = {1: glUniform1i, 2: glUniform2i, 3: glUniform3i, 4: glUniform4i}
+            location = glGetUniformLocation(
+                self.handle, c_char_p(name.encode("utf-8")))
+            uniform_functions = {1: glUniform1i,
+                                 2: glUniform2i, 3: glUniform3i, 4: glUniform4i}
             uniform_functions[len(vals)](location, *vals)
 
     def uniform_matrixf(self, name: str, mat: mat4):
@@ -169,7 +180,8 @@ class Shader:
         # works with matrices stored as lists,
         # as well as euclid matrices
         # obtain the uniform location
-        location = glGetUniformLocation(self.handle, c_char_p(name.encode("utf-8")))
+        location = glGetUniformLocation(
+            self.handle, c_char_p(name.encode("utf-8")))
         # upload the 4x4 floating point matrix
         mat_values = mat.to_list()
         # noinspection PyCallingNonCallable, PyTypeChecker
@@ -177,5 +189,6 @@ class Shader:
 
     def process_and_convert_to_string_buffer(self, s: str):
         if NUMBER_OF_LIGHTS_PLACEHOLDER in s:
-            s = s.replace(NUMBER_OF_LIGHTS_PLACEHOLDER, str(self.number_of_lights))
+            s = s.replace(NUMBER_OF_LIGHTS_PLACEHOLDER,
+                          str(self.number_of_lights))
         return create_string_buffer(bytes(s, "utf-8"))

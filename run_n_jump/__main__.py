@@ -2,7 +2,8 @@ import math
 from datetime import datetime
 
 import pyglet
-from pyglet.gl import *
+from pyglet.gl import glEnable, GL_DEPTH_TEST, GL_BLEND, glBlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA
+from pyglet.gl import glClearColor, glViewport
 
 import run_n_jump.game as game
 import run_n_jump.hot_reload as hot_reload

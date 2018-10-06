@@ -2,7 +2,7 @@ from ctypes import c_float, sizeof
 
 import numpy as np
 from PIL import Image
-from pyglet.gl import *
+from pyglet.gl import GL_FLOAT, GL_TRIANGLES, GL_LINES
 
 from .math_helper import identity, vec3, translate, scale, vec2
 from .model import ModelAsset, ModelInstance, upload, add_mvp_uniforms, add_light_uniforms, \

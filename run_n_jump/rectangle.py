@@ -1,6 +1,6 @@
 from ctypes import c_float, sizeof
 
-from pyglet.gl import *
+from pyglet.gl import GL_FLOAT, GL_LINES, GL_TRIANGLES
 
 from .math_helper import vec3
 from .model import ModelAsset, IndexBuffer, upload, add_mvp_uniforms, add_light_uniforms, \

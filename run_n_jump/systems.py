@@ -1,6 +1,9 @@
 import logging
 
-from pyglet.gl import *
+import pyglet
+from pyglet.gl import glBindVertexArray, glBindBuffer, GL_ARRAY_BUFFER, glVertexAttribPointer, GL_FALSE, glEnableVertexAttribPointer
+from pyglet.gl import glEnableVertexAttribArray, glBindAttribLocation, GL_ELEMENT_ARRAY_BUFFER, glDrawElements, GL_UNSIGNED_INT
+from pyglet.gl import glActiveTexture, glBindTexture, GL_TEXTURE_2D
 
 import run_n_jump.logging_config as logging_config
 from .game_data import GameData
@@ -62,7 +65,8 @@ class GlobalInputSystem(System):
                 game_data.camera.position = game_data.player_configuration[0]
                 game_data.camera.rotation = game_data.player_configuration[1]
                 game_data.camera.player = True
-            self.log.info(f"Switched to show_overview={game_data.show_overview}")
+            self.log.info(
+                f"Switched to show_overview={game_data.show_overview}")
 
     def reset(self, game_data: GameData):
         pass
@@ -345,7 +349,8 @@ class RenderSystem(System):
         self.vertex_count = 0
 
     def reset(self, game_data: GameData):
-        self.log.debug(f"{self.render_calls} render calls with {self.vertex_count} vertices")
+        self.log.debug(
+            f"{self.render_calls} render calls with {self.vertex_count} vertices")
         self.render_calls = 0
         self.vertex_count = 0
 
@@ -355,7 +360,8 @@ class RenderSystem(System):
         if not game_data.wireframe:
             entity.asset.current_index_buffer_id = 0
         else:
-            entity.asset.current_index_buffer_id = 1 % len(entity.asset.index_buffers)
+            entity.asset.current_index_buffer_id = 1 % len(
+                entity.asset.index_buffers)
 
         if len(game_data.lights) != entity.asset.shader.number_of_lights:
             entity.asset.shader.compile(len(game_data.lights))
@@ -380,7 +386,8 @@ class RenderSystem(System):
             glEnableVertexAttribArray(position)
             glBindAttribLocation(entity.asset.shader.handle,
                                  position, bytes(name, "utf-8"))
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, entity.asset.index_buffers[entity.asset.current_index_buffer_id].id)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,
+                     entity.asset.index_buffers[entity.asset.current_index_buffer_id].id)
 
     def draw(self, entity):
         draw_count = entity.asset.index_buffers[entity.asset.current_index_buffer_id].draw_count

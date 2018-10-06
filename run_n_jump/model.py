@@ -1,6 +1,9 @@
 from ctypes import sizeof
 
-from pyglet.gl import *
+from pyglet.gl import GLuint, glGenTextures, glGenBuffers, glGenVertexArrays, GL_STATIC_DRAW, GLint, GLfloat
+from pyglet.gl import glBindTexture, GL_TEXTURE_2D, glTexParameterf, GL_TEXTURE_MAG_FILTER, GL_LINEAR, GL_TEXTURE_MIN_FILTER
+from pyglet.gl import glTexImage2D, GL_ALPHA, GLubyte, glBindBuffer, glBufferData, GL_ELEMENT_ARRAY_BUFFER, GL_ARRAY_BUFFER
+from pyglet.gl import GL_TRIANGLES, GL_LINES
 
 from .math_helper import identity, vec3
 
@@ -124,7 +127,8 @@ def upload(asset: ModelAsset, gl_usage=GL_STATIC_DRAW):
         glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
 
         # noinspection PyCallingNonCallable,PyTypeChecker
-        texture_data = (GLubyte * len(asset.texture.buffer.flat))(*asset.texture.buffer.flatten())
+        texture_data = (GLubyte * len(asset.texture.buffer.flat)
+                        )(*asset.texture.buffer.flatten())
         glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, asset.texture.width, asset.texture.height, 0, asset.texture.format,
                      asset.texture.type, texture_data)
 
@@ -135,7 +139,8 @@ def upload_indices(asset: ModelAsset, gl_usage=GL_STATIC_DRAW):
         index_data_gl = (GLint * len(buffer.indices))(*buffer.indices)
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer.id)
         index_buffer_size = sizeof(index_data_gl)
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, index_buffer_size, index_data_gl, gl_usage)
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                     index_buffer_size, index_data_gl, gl_usage)
 
 
 def upload_vertices(asset: ModelAsset, gl_usage=GL_STATIC_DRAW):

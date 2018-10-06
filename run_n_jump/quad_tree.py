@@ -97,7 +97,7 @@ class QuadTree:
 
 def get_indentation(indentation):
     text = ""
-    for i in range(indentation):
+    for _ in range(indentation):
         text += "\t"
     return text
 

@@ -1,6 +1,6 @@
 from ctypes import sizeof, c_float
 
-from pyglet.gl import *
+from pyglet.gl import GL_FLOAT
 
 from .math_helper import vec3, translate, scale
 from .model import ModelAsset, load_blender_file, upload, ModelInstance, add_mvp_uniforms, \
